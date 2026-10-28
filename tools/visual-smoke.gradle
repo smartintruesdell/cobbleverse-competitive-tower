@@ -1,0 +1,20 @@
+// Optional test-only client. Not part of build, runtime JAR or published dependencies.
+sourceSets {
+    visualSmoke {
+        java.srcDirs = ['tools/visual-smoke']
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+tasks.register('visualSmokeJar', Jar) {
+    dependsOn tasks.named('visualSmokeClasses')
+    archiveClassifier = 'visual-smoke-dev'
+    from sourceSets.visualSmoke.output
+    from('tools/visual-smoke-mod.json') { rename { 'fabric.mod.json' } }
+}
+tasks.register('remapVisualSmoke', tasks.named('remapJar').get().class.superclass) {
+    dependsOn tasks.named('visualSmokeJar')
+    inputFile = tasks.named('visualSmokeJar', Jar).flatMap { it.archiveFile }
+    archiveClassifier = 'visual-smoke'
+    addNestedDependencies = false
+}

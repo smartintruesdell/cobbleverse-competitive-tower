@@ -1,0 +1,39 @@
+# Build outputs and third-party binaries
+.gradle/
+build/
+run/
+libs/
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+*.zip
+.mixin.out/
+decompiled/
+decompilations/
+inspection/
+
+# Game state, logs and local secrets
+/logs/
+/config/
+/saves/
+/world/
+/screenshots/
+/crash-reports/
+*.log
+.env
+.env.*
+*.key
+*.pem
+
+# Private operations and full local inventory: retain locally, never publish
+/deployment/
+/docs/hostealo-*.json
+/docs/installed-mods.json
+/tools/*hostealo*.py
+
+# Editor and Python state
+.DS_Store
+.idea/
+.vscode/
+__pycache__/
+*.pyc

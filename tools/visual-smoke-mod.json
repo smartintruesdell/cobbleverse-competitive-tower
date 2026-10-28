@@ -1,0 +1,1 @@
+{"schemaVersion": 1, "id": "competitive_tower_visual_smoke", "version": "1", "environment": "*", "entrypoints": {"client": ["dev.cobbleverse.tower.smoke.VisualSmoke"], "main": ["dev.cobbleverse.tower.smoke.RealUiServer"]}, "depends": {"cobbleverse_competitive_tower": "*"}}

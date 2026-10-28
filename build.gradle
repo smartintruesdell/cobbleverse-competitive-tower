@@ -1,0 +1,42 @@
+plugins { id 'fabric-loom' version '1.16.3' }
+version = '0.3.0-experimental'
+group = 'dev.cobbleverse'
+repositories { mavenCentral() }
+dependencies {
+    minecraft 'com.mojang:minecraft:1.21.1'
+    mappings 'net.fabricmc:yarn:1.21.1+build.3:v2'
+    modImplementation 'net.fabricmc:fabric-loader:0.19.5'
+    modImplementation 'net.fabricmc.fabric-api:fabric-api:0.116.14+1.21.1'
+    modImplementation fileTree(dir: 'libs', include: ['*.jar'])
+    modCompileOnly fileTree(dir: 'libs/support', include: ['*.jar'])
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.2.20'
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.11.4'
+}
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand version: project.version }
+}
+java { withSourcesJar() }
+tasks.withType(JavaCompile).configureEach { options.release = 21; options.encoding = 'UTF-8' }
+test { useJUnitPlatform() }
+
+tasks.register('sourceZip', Zip) {
+    archiveFileName = "${project.name}-${project.version}-source.zip"
+    destinationDirectory = layout.buildDirectory.dir('distributions')
+    into(project.name) {
+        from(projectDir) {
+            include 'src/**', 'docs/**', 'tools/**', 'gradle/**', 'licenses/**'
+            include 'gradlew', 'gradlew.bat', 'settings.gradle', 'gradle.properties', 'build.gradle', 'README.md', '.gitignore', '.gitattributes'
+            include 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'CONTRIBUTING.md'
+            exclude 'docs/hostealo-*.json', 'docs/installed-mods.json', 'tools/*hostealo*.py'
+            exclude '**/__pycache__/**'
+        }
+    }
+}
+tasks.named('build') { dependsOn tasks.named('sourceZip') }
+
+if (providers.gradleProperty('visualSmoke').isPresent()) { apply from: 'tools/visual-smoke.gradle' }
+
+// Include the addon license in both the runtime JAR and source JAR.
+tasks.withType(Jar).configureEach { from('LICENSE'); from('THIRD_PARTY_NOTICES.md') }

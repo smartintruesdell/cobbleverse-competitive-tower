@@ -1,0 +1,32 @@
+[
+  {
+    "file": "Cobblemon-fabric-1.7.3+1.21.1.jar",
+    "id": "cobblemon",
+    "version": "1.7.3+1.21.1",
+    "sha256": "f7c25955176badc444ad6211fc556514fedbdba776227f105fe899f8819d74e3"
+  },
+  {
+    "file": "architectury-13.0.8-fabric.jar",
+    "id": "architectury",
+    "version": "13.0.8",
+    "sha256": "10cbbb6f5f96a2f1853b0cc68428424cec8903409517b299ff02350756b6399d"
+  },
+  {
+    "file": "cobblemon_battle_tower-fabric-1.11.23.jar",
+    "id": "cobblemon_battle_tower",
+    "version": "1.11.23",
+    "sha256": "3e0c349f989a6103f9aaa072bec5ed805ccbbe6c159be94f958dd4b2fdbadd97"
+  },
+  {
+    "file": "rctapi-fabric-1.21.1-0.15.2-beta.jar",
+    "id": "rctapi",
+    "version": "0.15.2-beta",
+    "sha256": "e5bd96b1b74aad41588acc078e7385ca72f66a862aae47adda3d55b44c1d5ba8"
+  },
+  {
+    "file": "wild_battle_api-fabric-1.1.2.jar",
+    "id": "wild_battle_api",
+    "version": "1.1.2",
+    "sha256": "c25fee08e90ed8d28d2a0051f892bae28e1d6d8522c523131bd7dcbef9bcd0a8"
+  }
+]
