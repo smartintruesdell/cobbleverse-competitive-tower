@@ -14,11 +14,11 @@ Acceptance: clean baseline commit; no prohibited binaries or private operational
 
 ## 2. Richer friendly reference cards
 
-Implemented in 0.4.0: compact friendly hover/focus summaries and a scrollable right-click/R reference panel. Uses synced own-party ability/moves/stats and available held-item translation descriptions. Statistics are labeled as persistent party values, not Tower-normalized predictions. Open Team Sheets remains deferred; preview networking is unchanged.
+Implemented in 0.4.0: compact friendly hover/focus summaries and a scrollable right-click/R reference panel. Uses synced own-party ability/moves/stats and available held-item translation descriptions. Statistics are labeled as persistent party values, not Tower-normalized predictions. Open Team Sheets was added in 0.5.0 as **Doubles VGC Open**, with compact opponent hover/focus cards and a separate allowlisted packet. Closed preview networking remains unchanged.
 
 Extend the existing friendly move/item popout with ability and description, held-item description, move type/category/power/accuracy/PP, and useful player-owned battle statistics. Clearly distinguish normalized battle values from persistent party values. Start with compact useful summaries; test hover/focus, viewport scaling, long names and keyboard access. Prefer existing synced player data where it is accurate; inspect installed APIs rather than infer unsupported fields.
 
-### Stretch: optional Open Team Sheets
+### Stretch: optional Open Team Sheets — implemented in 0.5.0
 
 Treat this as a format choice set before locking a run. Keep the current closed species/form preview as the default. The server controls and persists the choice, and the screen clearly identifies the format before confirmation.
 

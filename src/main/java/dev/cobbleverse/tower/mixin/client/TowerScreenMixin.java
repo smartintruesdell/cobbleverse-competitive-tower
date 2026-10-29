@@ -28,13 +28,17 @@ public abstract class TowerScreenMixin implements TowerModeView {
     @Shadow private boolean isPartyValidForSelectedMode(){throw new AssertionError();}
     @Shadow private String getSelectedTeamModeName(){throw new AssertionError();}
     @Unique private boolean competitiveTower$vgc;
+    @Unique private boolean competitiveTower$open;
+    @Override public boolean competitiveTower$isOpen(){return competitiveTower$isVgc() && competitiveTower$open;}
 
     @Override public boolean competitiveTower$isVgc() {
         return competitiveTower$vgc && selectedBattleMode==1 && selectedTeamMode!=2;
     }
     @Override public void competitiveTower$refreshMode() {
-        if(TowerModeClient.ready() && (partyLockedIn || runActive))
+        if(TowerModeClient.ready() && (partyLockedIn || runActive)) {
             competitiveTower$vgc=selectedBattleMode==1 && selectedTeamMode!=2 && TowerModeClient.lockedCompetitive();
+            competitiveTower$open=competitiveTower$vgc && TowerModeClient.lockedOpen();
+        }
     }
     @Inject(method="method_25426",at=@At("TAIL"),remap=false)
     private void competitive$open(CallbackInfo ci){competitiveTower$refreshMode();TowerModeClient.request();}
@@ -44,14 +48,14 @@ public abstract class TowerScreenMixin implements TowerModeView {
     private void competitive$cycle(double x,double y,int button,CallbackInfoReturnable<Boolean> cir) {
         if(button!=0 || !battleModeHovered || runActive || selectedTeamMode==2 || !TowerModeClient.available())return;
         playClickSound();
-        var next=new ModeChoice(selectedBattleMode,competitiveTower$isVgc()).next();
-        selectedBattleMode=next.baseMode();competitiveTower$vgc=next.competitive();
+        var next=new ModeChoice(selectedBattleMode,competitiveTower$isVgc(),competitiveTower$isOpen()).next(TowerModeClient.openSupported());
+        selectedBattleMode=next.baseMode();competitiveTower$vgc=next.competitive();competitiveTower$open=next.open();
         if(partyLockedIn) {
             if(!isPartyValidForSelectedMode()) {
                 BattleTowerNetwork.sendForfeitRun();partyLockedIn=false;
             } else TowerModeClient.lock(selectedLevelMode==1?"LEVEL_100":"LEVEL_50",allowLegendaries,
                 selectedBattleMode==1?"DOUBLES":selectedBattleMode==2?"COOP_DOUBLES":"SINGLES",
-                getSelectedTeamModeName(),selectedBossPlayerCount,competitiveTower$isVgc());
+                getSelectedTeamModeName(),selectedBossPlayerCount,competitiveTower$isVgc(),competitiveTower$isOpen());
         }
         cir.setReturnValue(true);
     }
@@ -61,7 +65,7 @@ public abstract class TowerScreenMixin implements TowerModeView {
     }
     @WrapOperation(method="drawSettingsSection",at=@At(value="INVOKE",target="Lbattle/tower/util/TranslationHelper;translate(Ljava/lang/String;[Ljava/lang/Object;)Lnet/minecraft/class_5250;",remap=false),remap=false)
     private MutableText competitive$label(String key,Object[] args,Operation<MutableText> original) {
-        if(key.equals("gui.settings.mode.doubles") && competitiveTower$isVgc())return Text.literal("Doubles VGC");
+        if(key.equals("gui.settings.mode.doubles") && competitiveTower$isVgc())return Text.literal(competitiveTower$isOpen()?"Doubles VGC Open":"Doubles VGC");
         return original.call(key,args);
     }
     @Inject(method="isPartyValidForSelectedMode",at=@At("HEAD"),cancellable=true,remap=false)
@@ -78,7 +82,7 @@ public abstract class TowerScreenMixin implements TowerModeView {
     }
     @WrapOperation(method="method_25402",at=@At(value="INVOKE",target="Lbattle/tower/network/BattleTowerNetwork;sendLockInTeam(Ljava/lang/String;ZLjava/lang/String;Ljava/lang/String;I)V"),require=4,remap=false)
     private void competitive$lock(String level,boolean legends,String battle,String team,int boss,Operation<Void> original) {
-        if(TowerModeClient.supported())TowerModeClient.lock(level,legends,battle,team,boss,competitiveTower$isVgc());
+        if(TowerModeClient.supported())TowerModeClient.lock(level,legends,battle,team,boss,competitiveTower$isVgc(),competitiveTower$isOpen());
         else original.call(level,legends,battle,team,boss);
     }
 }

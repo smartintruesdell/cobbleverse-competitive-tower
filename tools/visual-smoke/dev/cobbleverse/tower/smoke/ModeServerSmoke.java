@@ -48,9 +48,15 @@ public final class ModeServerSmoke {
                 if(!Boolean.FALSE.equals(((RunModeData)copy).competitiveTower$getMode()))throw new AssertionError("Normal flag not persisted");
                 System.out.println("MODE_NORMAL_LOCK_PASS: GUI ordinary Doubles overrides legacy preference and persists false");stage=2;
             }
-            if(stage==2 && data.isPartyLockedIn() && TowerModes.competitive(owner)) {
+            if(stage==2 && data.isPartyLockedIn() && TowerModes.competitive(owner) && TowerModes.open(owner)) {
                 var copy=PlayerTowerData.fromNbt(owner,data.toNbt(server.getRegistryManager()),server.getRegistryManager());
-                if(!Boolean.TRUE.equals(((RunModeData)copy).competitiveTower$getMode()))throw new AssertionError("VGC flag not persisted");
+                if(!Boolean.TRUE.equals(((RunModeData)copy).competitiveTower$getMode()) || !((RunModeData)copy).competitiveTower$isOpen())throw new AssertionError("VGC flag not persisted");
+                var oldTag=data.toNbt(server.getRegistryManager());oldTag.remove("cobbleverseOpenSheets");
+                var legacy=PlayerTowerData.fromNbt(owner,oldTag,server.getRegistryManager());
+                if(((RunModeData)legacy).competitiveTower$isOpen())throw new AssertionError("Old save defaulted open");
+                TowerModes.fromScreen(p,new TowerModeNetwork.Lock("LEVEL_50",false,"DOUBLES","NORMAL",2,true));
+                if(!TowerModes.open(owner))throw new AssertionError("Legacy lock downgraded open run");
+                System.out.println("OPEN_PERSIST_LEGACY_PASS: open NBT, old closed default, legacy downgrade rejected");
                 System.out.println("MODE_VGC_PERSIST_PASS: GUI VGC lock persists with original Tower data");
                 NetworkHelper.sendBattleTowerOpenScreen(p,terminal);stage=3;
             }
@@ -63,7 +69,7 @@ public final class ModeServerSmoke {
                 System.out.println("MODE_VGC_BATTLE_PASS: reopened Tower VGC selection starts ordered 4v4");
                 BattleTowerManager.forfeitRun(p);
                 TowerModes.fromScreen(p,new TowerModeNetwork.Lock("LEVEL_50",false,"DOUBLES","NORMAL",2,false));
-                if(TowerModes.competitive(owner))throw new AssertionError("Could not leave VGC");
+                if(TowerModes.competitive(owner) || TowerModes.open(owner))throw new AssertionError("Could not leave VGC");
                 // Avoid the standard one-second initiation cooldown before the regression battle.
                 stage=4; ticks=0;
             }

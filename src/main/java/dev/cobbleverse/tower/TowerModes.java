@@ -15,14 +15,21 @@ public final class TowerModes {
     private TowerModes() {}
     private static final ThreadLocal<Intent> intent=new ThreadLocal<>();
     private static final class Intent {
-        final UUID player;final boolean competitive;boolean accepted;
-        Intent(UUID player,boolean competitive){this.player=player;this.competitive=competitive;}
+        final UUID player;final boolean competitive,open;boolean accepted;
+        Intent(UUID player,boolean competitive,boolean open){this.player=player;this.competitive=competitive;this.open=open;}
     }
     public static void fromScreen(ServerPlayerEntity player,TowerModeNetwork.Lock p) {
+        fromScreen(player,p,false,false);
+    }
+    public static void fromScreen(ServerPlayerEntity player,TowerModeNetwork.Lock p,boolean open,boolean sheetsProtocol) {
+        if((open && (!p.competitive() || !SheetNetwork.available(player)))
+            || (!sheetsProtocol && open(player.getUuid()) && TowerDataManager.getPlayerData(player.getUuid()).isPartyLockedIn())) {
+            sync(player,"This Open Team Sheets run requires an updated client. Finish or forfeit it before changing formats.");return;
+        }
         if(!Set.of("LEVEL_50","LEVEL_100").contains(p.levelMode()) || !Set.of("SINGLES","DOUBLES","COOP_DOUBLES","BOSS").contains(p.battleMode())
             || !Set.of("NORMAL","RANDOM").contains(p.teamMode()) || p.bossPlayers()<1 || p.bossPlayers()>3
             || p.competitive() && !p.battleMode().equals("DOUBLES")) {sync(player,"Invalid Tower format request.");return;}
-        Intent before=intent.get(), current=new Intent(player.getUuid(),p.competitive());intent.set(current);
+        Intent before=intent.get(), current=new Intent(player.getUuid(),p.competitive(),open);intent.set(current);
         try {
             TowerLockAccess.competitive$lock(player,new BattleTowerNetwork.LockInTeamPayload(p.levelMode(),p.legendaries(),p.battleMode(),p.teamMode(),p.bossPlayers()));
             if(!current.accepted) {
@@ -35,7 +42,11 @@ public final class TowerModes {
         Intent before=intent.get();
         boolean competitive=settings.getBattleMode()==BattleSettings.BattleMode.DOUBLES
             && (before!=null && before.player.equals(player.getUuid())?before.competitive:CompetitiveTower.legacyPreference(player.getUuid()));
-        Intent current=before!=null && before.player.equals(player.getUuid())?before:new Intent(player.getUuid(),competitive);
+        Intent current=before!=null && before.player.equals(player.getUuid())?before:new Intent(player.getUuid(),competitive,false);
+        var data=TowerDataManager.getPlayerData(player.getUuid());
+        if((current.open && !SheetNetwork.available(player)) || (before==null && open(player.getUuid()) && data.isPartyLockedIn())) {
+            player.sendMessage(Text.literal("Open Team Sheets requires an updated client and explicit format selection."),false);return false;
+        }
         if(competitive && (!CompetitiveTower.modeAvailable() || !CompetitiveTower.hasSixHealthy(player))) {
             player.sendMessage(Text.literal("Doubles VGC requires the enabled addon and six healthy Pokémon."),false);return false;
         }
@@ -47,6 +58,7 @@ public final class TowerModes {
         Intent current=intent.get();
         if(current==null || !current.player.equals(data.getPlayerUUID()))throw new IllegalStateException("Tower lock lacks mode context");
         ((RunModeData)data).competitiveTower$setMode(current.competitive);
+        ((RunModeData)data).competitiveTower$setOpen(current.open);
     }
     public static boolean competitive(UUID player) {
         var data=TowerDataManager.getPlayerData(player);
@@ -54,9 +66,15 @@ public final class TowerModes {
         return data.getBattleSettings().getBattleMode()==BattleSettings.BattleMode.DOUBLES
             && (stored!=null?stored:CompetitiveTower.legacyPreference(player));
     }
+    public static boolean open(UUID player) {
+        return competitive(player) && ((RunModeData)TowerDataManager.getPlayerData(player)).competitiveTower$isOpen();
+    }
     public static void sync(ServerPlayerEntity player,String message) {
         if(!ServerPlayNetworking.canSend(player,TowerModeNetwork.State.ID))return;
         var data=TowerDataManager.getPlayerData(player.getUuid());
-        ServerPlayNetworking.send(player,new TowerModeNetwork.State(CompetitiveTower.modeAvailable(),competitive(player.getUuid()),data.isPartyLockedIn(),data.isRunActive(),message));
+        var state=new TowerModeNetwork.State(CompetitiveTower.modeAvailable(),competitive(player.getUuid()),data.isPartyLockedIn(),data.isRunActive(),message);
+        if(ServerPlayNetworking.canSend(player,SheetNetwork.State.ID))
+            ServerPlayNetworking.send(player,new SheetNetwork.State(state,open(player.getUuid())));
+        else ServerPlayNetworking.send(player,state);
     }
 }

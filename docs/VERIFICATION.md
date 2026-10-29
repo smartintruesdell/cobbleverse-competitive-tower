@@ -1,5 +1,16 @@
 # Verification
 
+## Per-run Open Team Sheets — 0.5.0 (2026-10-29)
+
+- Added Doubles VGC Open to the existing format cycle without extending original Tower indices. Closed VGC remains the previous choice. The original lock transaction now persists a separate open flag; missing old-save keys default closed.
+- Separate capability-gated lock/state/open-preview packets retain the v1 closed protocol unchanged. Open sheets allow only ability, held-item identifier, up to four move identifiers and configured Tera type for each of six opponents. No selected-four/leads, EVs/IVs/nature/stats/NBT or current/boosted PP fields exist in that schema.
+- Compact opponent hover/focus cards reuse the existing tooltip interaction. The initially prototyped opponent modal was removed following feedback.
+- An actual 0.4.0 client against the 0.5.0 server was rejected for open lock/start and legacy downgrade of a saved open run, then completed closed GUI selection into ordered 4v4 with persistent party preservation.
+- All twenty unit tests passed, including open codec bounds, schema allowlists, closed protocol separation, state/lock round trips and capability-dependent selector cycles.
+- Production-runtime menu test: five choices cycled correctly, ordinary Doubles overrode legacy opt-in, Open VGC relocked and survived original NBT serialization/reload, a fresh Tower screen restored the Open label, old-save sheets defaulted closed, and a legacy lock could not downgrade the open run. Open preview confirmed into ordered 4v4; returning to ordinary Doubles produced 6v6 and preserved all six party identities/order.
+
+Limits: NBT reload was exercised, not a full server restart during an active open run. Complete multi-floor playthrough, open-preview disconnect/rejoin and hosted-server play remain manual checks; the open preview uses the existing cancellation/recovery lifecycle without a new persistence subsystem.
+
 ## Friendly references and action order — 0.4.0 (2026-10-29)
 
 - Inspected the installed Cobblemon 1.7.3 APIs for ability translation keys, move metadata, current/max PP, party stats and held-item tooltip translations. The client uses only its existing own-party data; opponent preview packet schemas are unchanged.

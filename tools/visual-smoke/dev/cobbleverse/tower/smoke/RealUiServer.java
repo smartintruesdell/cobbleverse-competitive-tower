@@ -33,8 +33,26 @@ public final class RealUiServer implements ModInitializer {
                 server.getCommandManager().executeWithPrefix(p.getCommandSource(),"ctower on");
                 var snapshot=new TeamSnapshot();snapshot.captureTeam(team,p.getUuid());
                 var settings=new BattleSettings();settings.setBattleMode(BattleSettings.BattleMode.DOUBLES);
+                if(Boolean.getBoolean("ctower.legacyClientTest")) {
+                    if(dev.cobbleverse.tower.SheetNetwork.available(p))throw new AssertionError("Expected actual legacy client");
+                    var mode=new dev.cobbleverse.tower.TowerModeNetwork.Lock("LEVEL_50",false,"DOUBLES","NORMAL",2,true);
+                    var data=TowerDataManager.getPlayerData(p.getUuid());
+                    dev.cobbleverse.tower.TowerModes.fromScreen(p,mode,true,true);
+                    if(data.isPartyLockedIn())throw new AssertionError("Legacy client accepted open lock");
+                    data.lockInTeam(snapshot,settings);
+                    var flag=(dev.cobbleverse.tower.RunModeData)data;flag.competitiveTower$setMode(true);flag.competitiveTower$setOpen(true);
+                    BattleTowerManager.startBattle(p,p.getBlockPos());
+                    if(data.isRunActive() || BattleTowerManager.hasActiveSession(p.getUuid()))throw new AssertionError("Legacy client started persisted open run");
+                    dev.cobbleverse.tower.TowerModes.fromScreen(p,mode);
+                    if(!flag.competitiveTower$isOpen())throw new AssertionError("Legacy lock downgraded saved open run");
+                    flag.competitiveTower$setOpen(false);
+                    dev.cobbleverse.tower.TowerModes.fromScreen(p,mode);
+                    if(!data.isPartyLockedIn() || flag.competitiveTower$isOpen())throw new AssertionError("Legacy closed lock failed");
+                    System.out.println("LEGACY_CLIENT_GATE_PASS: real 0.4 client rejected for open lock/start/downgrade; closed VGC allowed");
+                }
                 TowerDataManager.getPlayerData(p.getUuid()).lockInTeam(snapshot,settings);
                 ((dev.cobbleverse.tower.RunModeData)TowerDataManager.getPlayerData(p.getUuid())).competitiveTower$setMode(true);
+                ((dev.cobbleverse.tower.RunModeData)TowerDataManager.getPlayerData(p.getUuid())).competitiveTower$setOpen(false);
                 var pos=p.getBlockPos().add(2,0,0);p.getServerWorld().setBlockState(pos,Registries.BLOCK.get(Identifier.of("cobblemon_battle_tower:holo_battle_tower")).getDefaultState());
                 BattleTowerManager.startBattle(p,pos);
             }

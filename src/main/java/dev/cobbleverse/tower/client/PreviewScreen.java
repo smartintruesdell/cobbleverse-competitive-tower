@@ -20,6 +20,8 @@ import java.util.*;
 /** Client-only view. No world or party mutations, and no battle cancellation in removed(). */
 public final class PreviewScreen extends Screen {
     private PreviewNetwork.Preview preview;
+    private final List<SheetNetwork.Sheet> opponentSheets;
+    private final List<ButtonWidget> opponentButtons=new ArrayList<>();
     private final OrderedSelection selection=new OrderedSelection();
     private long deadline;
     private boolean waiting, confirmingCancel;
@@ -30,12 +32,16 @@ public final class PreviewScreen extends Screen {
     private ButtonWidget confirm, clear;
     private int left,top,panelWidth,cardWidth,cardHeight,opponentY,partyY,controlsY;
 
-    public PreviewScreen(PreviewNetwork.Preview p) {
+    public PreviewScreen(PreviewNetwork.Preview p) {this(p,List.of());}
+    public PreviewScreen(PreviewNetwork.Preview p,List<SheetNetwork.Sheet> sheets) {
         super(Text.literal("Choose your four")); preview=p;
+        opponentSheets=List.copyOf(sheets);
+        if(!sheets.isEmpty() && sheets.size()!=6)throw new IllegalArgumentException("Six open sheets required");
         deadline=System.nanoTime()+p.remainingMs()*1_000_000L;
         p.opponent().forEach(e -> opponentIcons.add(icon(e)));
         p.party().forEach(e -> partyIcons.add(icon(e)));
     }
+    public boolean openSheets(){return !opponentSheets.isEmpty();}
     public String token() { return preview.token(); }
     public void refresh(PreviewNetwork.Preview p) {
         preview=p; deadline=Math.min(deadline,System.nanoTime()+p.remainingMs()*1_000_000L);
@@ -54,7 +60,7 @@ public final class PreviewScreen extends Screen {
         } catch (RuntimeException ignored) { return ItemStack.EMPTY; }
     }
     @Override protected void init() {
-        clearChildren(); partyButtons.clear();
+        clearChildren(); partyButtons.clear();opponentButtons.clear();
         panelWidth=Math.min(600,width-16); left=(width-panelWidth)/2;
         int panelHeight=Math.min(330,height-8);top=Math.max(4,(height-panelHeight)/2);
         cardWidth=(panelWidth-20)/6;cardHeight=Math.max(26,(panelHeight-114)/2);
@@ -66,6 +72,13 @@ public final class PreviewScreen extends Screen {
                 ClientPlayNetworking.send(new PreviewNetwork.Cancel(token()));
             });
             return;
+        }
+        if(!opponentSheets.isEmpty())for(int i=0;i<6;i++) {
+            var b=addDrawableChild(new ButtonWidget(left+4+i*(cardWidth+2),opponentY,cardWidth,cardHeight,
+                Text.literal("Open sheet: "+label(preview.opponent().get(i))),ignored->{},supplier->supplier.get()) {
+                @Override public void renderWidget(DrawContext context,int mouseX,int mouseY,float delta) {}
+            });
+            opponentButtons.add(b);
         }
         for(int i=0;i<6;i++) {
             final int slot=i+1;
@@ -124,11 +137,11 @@ public final class PreviewScreen extends Screen {
             c.drawCenteredTextWithShadow(textRenderer,"This ends the run. The selection timer continues.",width/2,top+82,0xFFBD69);
             super.render(c,mouseX,mouseY,delta);return;
         }
-        c.drawTextWithShadow(textRenderer,"Opponent · species and forms only",left+6,opponentY-11,0xBAC8DA);
+        c.drawTextWithShadow(textRenderer,opponentSheets.isEmpty()?"Opponent · CLOSED sheets · species/forms only":"Opponent · OPEN sheets · hover for details",left+6,opponentY-11,0xBAC8DA);
         c.drawTextWithShadow(textRenderer,"Your party · click four in lead-first order",left+6,partyY-11,0xBAC8DA);
         super.render(c,mouseX,mouseY,delta);
         for(int i=0;i<6;i++) {
-            drawCard(c,preview.opponent().get(i),opponentIcons.get(i),left+4+i*(cardWidth+2),opponentY,-1,false,true,ItemStack.EMPTY);
+            drawCard(c,preview.opponent().get(i),opponentIcons.get(i),left+4+i*(cardWidth+2),opponentY,-1,!opponentButtons.isEmpty() && opponentButtons.get(i).isFocused(),true,opponentSheets.isEmpty()?ItemStack.EMPTY:sheetItem(opponentSheets.get(i)));
             var friendly=friendlyPokemon(i);
             drawCard(c,preview.party().get(i),partyIcons.get(i),left+4+i*(cardWidth+2),partyY,selection.slots().indexOf(i+1),partyButtons.get(i).isFocused(),false,
                 friendly==null?ItemStack.EMPTY:friendly.heldItem());
@@ -150,9 +163,15 @@ public final class PreviewScreen extends Screen {
         } else {
             for(int i=0;i<6;i++) {
                 int x=left+4+i*(cardWidth+2);
-                if(mouseX>=x && mouseX<x+cardWidth && mouseY>=opponentY && mouseY<opponentY+cardHeight)
-                    c.drawTooltip(textRenderer,Text.literal(label(preview.opponent().get(i))),mouseX,mouseY);
+                if(mouseX>=x && mouseX<x+cardWidth && mouseY>=opponentY && mouseY<opponentY+cardHeight) {
+                    if(opponentSheets.isEmpty())c.drawTooltip(textRenderer,Text.literal(label(preview.opponent().get(i))),mouseX,mouseY);
+                    else c.drawTooltip(textRenderer,sheetLines(i),mouseX,mouseY);
+                }
             }
+        }
+        if(friendly<0 && !overOpponent)for(int i=0;i<opponentButtons.size();i++) {
+            var b=opponentButtons.get(i);
+            if(b.isFocused()) {c.drawTooltip(textRenderer,sheetLines(i),b.getX()+cardWidth/2,opponentY+cardHeight);break;}
         }
     }
     private static boolean namedForm(PreviewNetwork.Entry e) {
@@ -162,6 +181,29 @@ public final class PreviewScreen extends Screen {
         return e.name()+(namedForm(e)?" / "+e.form():"");
     }
     private List<Text> friendlyTooltip(int slot) { return referenceLines(slot,false); }
+    private static ItemStack sheetItem(SheetNetwork.Sheet sheet) {
+        var id=Identifier.tryParse(sheet.item());
+        return id==null?ItemStack.EMPTY:new ItemStack(net.minecraft.registry.Registries.ITEM.get(id));
+    }
+    private List<Text> sheetLines(int slot) {
+        var sheet=opponentSheets.get(slot);
+        List<Text> lines=new ArrayList<>();
+        lines.add(Text.literal(label(preview.opponent().get(slot))).formatted(Formatting.RED));
+        var ability=com.cobblemon.mod.common.api.abilities.Abilities.get(sheet.ability());
+        lines.add(Text.literal("Ability: ").formatted(Formatting.GRAY)
+            .append(ability==null?Text.literal(sheet.ability()):Text.translatable(ability.getDisplayName())));
+        var item=sheetItem(sheet);
+        lines.add(item.isEmpty()?Text.literal("No held item").formatted(Formatting.GRAY)
+            :Text.literal("Held: ").formatted(Formatting.GRAY).append(item.getName()));
+        lines.add(Text.literal("Tera type: "+sheet.tera()).formatted(Formatting.GRAY));
+        lines.add(Text.literal("Moves").formatted(Formatting.GRAY));
+        for(String name:sheet.moves()) {
+            var move=com.cobblemon.mod.common.api.moves.Moves.getByName(name);
+            lines.add(Text.literal("• ").append(move==null?Text.literal(name):move.getDisplayName()));
+        }
+        if(sheet.moves().isEmpty())lines.add(Text.literal("No moves learned.").formatted(Formatting.GRAY));
+        return lines;
+    }
     private List<Text> referenceLines(int slot,boolean detailed) {
         var entry=preview.party().get(slot);
         List<Text> lines=new ArrayList<>();
@@ -175,6 +217,7 @@ public final class PreviewScreen extends Screen {
             var held=pokemon.heldItem();
             lines.add(held.isEmpty()?Text.literal("No held item").formatted(Formatting.GRAY)
                 :Text.literal("Held: ").formatted(Formatting.GRAY).append(held.getName()));
+            lines.add(Text.literal("Tera type: ").formatted(Formatting.GRAY).append(pokemon.getTeraType().getDisplayName()));
             if(detailed && !held.isEmpty()) {
                 String key=held.getItem().getTranslationKey()+".tooltip";
                 if(net.minecraft.client.resource.language.I18n.hasTranslation(key))

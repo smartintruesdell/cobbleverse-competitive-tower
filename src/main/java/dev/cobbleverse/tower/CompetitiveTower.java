@@ -64,6 +64,8 @@ public final class CompetitiveTower implements ModInitializer {
         final List<UUID> partyIds;
         final List<String> partyState;
         final List<PreviewNetwork.Entry> partyPreview;
+        final boolean open;
+        final List<SheetNetwork.Sheet> sheets;
         final BattleTowerTeams.TeamResult opponent;
         final int[] npcSlots = Selection.randomFour(new Random());
         int[] playerSlots;
@@ -76,12 +78,15 @@ public final class CompetitiveTower implements ModInitializer {
             settings = data.getBattleSettings().toNbt().toString(); forcedTeam = data.getForcedTeamName();
             var party = party(p); partyIds = ids(party); partyState = state(p, party); partyPreview = publicEntries(party);
             this.opponent = opponent;
+            open=TowerModes.open(owner);
+            sheets=open?Arrays.stream(opponent.team).map(CompetitiveTower::sheet).toList():List.of();
             deadline = System.nanoTime() + config.selectionTimeoutSeconds * 1_000_000_000L;
         }
     }
     @Override public void onInitialize() {
         PreviewNetwork.register();
         TowerModeNetwork.register();
+        SheetNetwork.register();
         // Resolve all version-specific hooks at startup, rather than on the first player's challenge.
         try { Class.forName("battle.tower.battle.BattleTowerManager", false, getClass().getClassLoader()); }
         catch (ClassNotFoundException e) { throw new IllegalStateException("Pinned Tower manager missing",e); }
@@ -174,6 +179,9 @@ public final class CompetitiveTower implements ModInitializer {
     }
     public static BattleTowerManager.BattleTowerSession start(ServerPlayerEntity player, BlockPos terminal,
             Operation<BattleTowerManager.BattleTowerSession> original) {
+        if(TowerModes.open(player.getUuid()) && !SheetNetwork.available(player)) {
+            tell(player,"Doubles VGC Open requires a client that supports Open Team Sheets. Update the addon or forfeit this run.");return null;
+        }
         Pending p = pending.get(player.getUuid());
         if (p != null && launching != p) { show(player, p); return null; }
         Request before = request.get(); request.set(new Request(player, terminal));
@@ -271,7 +279,8 @@ public final class CompetitiveTower implements ModInitializer {
         return data.isPartyLockedIn() && data.isRunActive() && data.getCurrentFloor() == p.floor
             && data.getTeamSnapshot().getSnapshotTime() == p.snapshotTime
             && data.getBattleSettings().toNbt().toString().equals(p.settings)
-            && Objects.equals(data.getForcedTeamName(), p.forcedTeam);
+            && Objects.equals(data.getForcedTeamName(), p.forcedTeam)
+            && TowerModes.open(p.owner)==p.open;
     }
     private static boolean validTerminal(ServerPlayerEntity player, BlockPos pos) {
         return player.getBlockPos().isWithinDistance(pos, 8)
@@ -304,14 +313,21 @@ public final class CompetitiveTower implements ModInitializer {
     private static List<PreviewNetwork.Entry> publicEntries(List<Pokemon> team) {
         return team.stream().map(p -> new PreviewNetwork.Entry(p.getSpecies().getResourceIdentifier().toString(),p.getSpecies().getName(),p.getForm().getName())).toList();
     }
+    private static SheetNetwork.Sheet sheet(Pokemon p) {
+        var held=p.heldItem();
+        return new SheetNetwork.Sheet(p.getAbility().getName(),held.isEmpty()?"":Registries.ITEM.getId(held.getItem()).toString(),
+            p.getMoveSet().getMoves().stream().map(m->m.getName()).toList(),p.getTeraType().getDisplayName().getString());
+    }
     private static void show(ServerPlayerEntity player, Pending p) {
-        tell(player,"Opponent's six (species / form only): " + labels(Arrays.asList(p.opponent.team)));
+        if(p.open && !SheetNetwork.available(player)) {cancel(player,"Open Team Sheets client support lost; run forfeited.");return;}
+        tell(player,(p.open?"OPEN TEAM SHEETS · Opponent’s six: ":"CLOSED SHEETS · Opponent’s six (species / form only): ") + labels(Arrays.asList(p.opponent.team)));
         tell(player,"Your slots: " + labels(party(player)));
         tell(player,"Pick four in order; first two lead. NPC choice is hidden. Cancel, timeout or disconnect forfeits this run.");
         if (PreviewNetwork.available(player)) {
             int remaining = (int)Math.clamp((p.deadline-System.nanoTime())/1_000_000L,0,600_000);
-            net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,new PreviewNetwork.Preview(
-                p.token,p.floor,remaining,publicEntries(Arrays.asList(p.opponent.team)),p.partyPreview));
+            var preview=new PreviewNetwork.Preview(p.token,p.floor,remaining,publicEntries(Arrays.asList(p.opponent.team)),p.partyPreview);
+            if(p.open)net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,new SheetNetwork.Preview(preview,p.sheets));
+            else net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,preview);
         }
         String command = "/ctower pick " + p.token + " 1 2 3 4";
         player.sendMessage(Text.literal("[Click to edit your four slots] " + command)

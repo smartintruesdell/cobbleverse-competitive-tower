@@ -21,18 +21,27 @@ public final class ModeClientSmoke {
                 if(phase>0 && ++ticks>800)throw new AssertionError("Mode test stalled in phase "+phase);
                 if(phase==1 && c.currentScreen instanceof BattleTowerScreen screen && TowerModeClient.available()) {
                     first=(Screen)screen;
-                    for(int i=0;i<5;i++)click(screen,"battleModeHovered");
-                    if(integer(screen,"selectedBattleMode")!=1 || ((TowerModeView)screen).competitiveTower$isVgc())throw new AssertionError("Four-choice cycle failed");
-                    System.out.println("MODE_SELECTOR_CYCLE_PASS: Singles -> Doubles -> VGC -> Co-op -> Singles -> Doubles");
+                    for(int i=0;i<6;i++)click(screen,"battleModeHovered");
+                    if(integer(screen,"selectedBattleMode")!=1 || ((TowerModeView)screen).competitiveTower$isVgc())throw new AssertionError("Five-choice cycle failed");
+                    System.out.println("MODE_SELECTOR_CYCLE_PASS: Singles -> Doubles -> VGC -> Open -> Co-op -> Singles -> Doubles");
                     click(screen,"lockInHovered");phase=2;ticks=0;
                 } else if(phase==2 && c.currentScreen instanceof BattleTowerScreen screen && bool(screen,"partyLockedIn") && !((TowerModeView)screen).competitiveTower$isVgc()) {
-                    click(screen,"battleModeHovered");phase=3;ticks=0;
-                } else if(phase==3 && c.currentScreen instanceof BattleTowerScreen screen && c.currentScreen!=first && bool(screen,"partyLockedIn") && ((TowerModeView)screen).competitiveTower$isVgc()) {
+                    click(screen,"battleModeHovered");click(screen,"battleModeHovered");phase=3;ticks=0;
+                } else if(phase==3 && c.currentScreen instanceof BattleTowerScreen screen && c.currentScreen!=first && bool(screen,"partyLockedIn") && ((TowerModeView)screen).competitiveTower$isOpen()) {
                     if(ticks<15)return;
-                    ScreenshotRecorder.saveScreenshot(c.runDirectory,"tower-format-vgc-v030.png",c.getFramebuffer(),t->{});
-                    System.out.println("MODE_REOPEN_PASS: fresh Tower screen displays locked VGC");
+                    ScreenshotRecorder.saveScreenshot(c.runDirectory,"tower-format-open-v050.png",c.getFramebuffer(),t->{});
+                    System.out.println("MODE_REOPEN_PASS: fresh Tower screen displays locked Doubles VGC Open");
                     click(screen,"startBattleHovered");phase=4;ticks=0;
                 } else if(phase==4 && c.currentScreen instanceof PreviewScreen screen) {
+                    if(!screen.openSheets())throw new AssertionError("Open run received closed preview");
+                    if(ticks==1) {
+                        var card=((Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w)
+                            .filter(b->b.getMessage().getString().startsWith("Open sheet:")).findFirst().orElseThrow();
+                        ((Screen)screen).setFocused(card);card.setFocused(true);
+                        org.lwjgl.glfw.GLFW.glfwSetCursorPos(c.getWindow().getHandle(),0,0);
+                    }
+                    if(ticks==15)ScreenshotRecorder.saveScreenshot(c.runDirectory,"opponent-open-hover-v050.png",c.getFramebuffer(),t->{});
+                    if(ticks<20)return;
                     for(int slot:new int[]{5,2,6,1})((Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w).filter(b->b.getMessage().getString().startsWith("Slot "+slot+":")).findFirst().ifPresent(ButtonWidget::onPress);
                     ((Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w).filter(b->b.getMessage().getString().equals("Confirm")).findFirst().ifPresent(ButtonWidget::onPress);
                     phase=5;ticks=0;
