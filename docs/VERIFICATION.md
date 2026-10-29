@@ -1,5 +1,11 @@
 # Verification
 
+## Configurable selection ramp — 0.6.1 (2026-10-29)
+
+- Added a versioned, addon-owned floor-ramp JSON file. Defaults use uniform random four/order on floors 1–4; progressively stronger probabilistic scoring and less shuffle on 5–8; maximum score with exact-tie variation on 9 and beyond. Main RANDOM policy remains an override. No player-build information or move-AI changes were introduced.
+- The disposable pinned-runtime floor-9 check logged heuristic=true, zero margin and no shuffle, then verified cached NPC order in the actual 4v4 actor and preservation of all six player party identities/order.
+- Thirty-nine unit tests passed, covering all boundaries, continuation beyond floor 10, zero scorer calls on early floors, seeded reproducibility, mixed/shuffled middle tiers, maximum-only late selection, JSON round trip, shipped example consistency, malformed-file preservation and strict config bounds. Existing selector/packet privacy tests remain passing.
+
 ## NPC four and opener selection — 0.6.0 (2026-10-29)
 
 - Inspected the pinned Tower trainer factory and RCT evaluator/configuration. Solo Tower supplies RCTBattleAI; Wild Battle API wild logic is separate. Basic status/support evaluators exist, but no team-intent contract or proven setter/redirection coordination was found.

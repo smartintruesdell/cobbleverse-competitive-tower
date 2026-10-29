@@ -14,8 +14,12 @@ public final class NpcSelectionPolicy {
     private NpcSelectionPolicy() {}
     private static final org.slf4j.Logger LOG=LoggerFactory.getLogger("competitive-tower-selection");
     private static List<TeamHints.Entry> hints=List.of();
-    public static void load(Path path){hints=TeamHints.load(path,LOG::warn);}
-    public static int[] select(Pokemon[] own,List<PreviewNetwork.Entry> opposing,String trainer,String policy,boolean diagnostics) {
+    private static SelectionRamp ramp=SelectionRamp.defaults();
+    public static void load(Path path){
+        hints=TeamHints.load(path,LOG::warn);
+        ramp=SelectionRamp.load(path.resolveSibling("cobbleverse-competitive-tower-ramp.json"),LOG::warn);
+    }
+    public static int[] select(Pokemon[] own,List<PreviewNetwork.Entry> opposing,String trainer,String policy,boolean diagnostics,int floor) {
         long seed=new Random().nextLong();
         if("RANDOM".equals(policy)) {
             int[] selected=Selection.randomFour(new Random(seed));
@@ -24,12 +28,15 @@ public final class NpcSelectionPolicy {
         }
         try {
             if(!"HEURISTIC".equals(policy))throw new IllegalArgumentException("Unknown npcSelection policy "+policy);
-            var roster=Arrays.stream(own).map(NpcSelectionPolicy::identity).toList();
-            var intent=hints.stream().filter(e->e.matches(trainer,roster)).map(TeamHints.Entry::hints).findFirst().orElse(NpcSelector.Hints.EMPTY);
-            var result=NpcSelector.select(Arrays.stream(own).map(NpcSelectionPolicy::member).toList(),publicMembers(opposing),intent,seed);
-            if(diagnostics)LOG.info("NPC selection seed={} trainer={} roster={} archetype={} candidates={} four={} components={}",
-                seed,trainer,roster,intent.archetype(),result.candidates(),result.chosen().slots(),result.chosen().components());
-            return Selection.validate(result.chosen().orderedSlots());
+            var choice=ramp.choose(floor,seed,()->{
+                var roster=Arrays.stream(own).map(NpcSelectionPolicy::identity).toList();
+                var intent=hints.stream().filter(e->e.matches(trainer,roster)).map(TeamHints.Entry::hints).findFirst().orElse(NpcSelector.Hints.EMPTY);
+                if(diagnostics)LOG.info("NPC scoring trainer={} roster={} archetype={}",trainer,roster,intent.archetype());
+                return NpcSelector.candidates(Arrays.stream(own).map(NpcSelectionPolicy::member).toList(),publicMembers(opposing),intent);
+            });
+            if(diagnostics)LOG.info("NPC selection seed={} floor={} band={} heuristic={} shuffled={} four={} preShuffleComponents={}",
+                seed,floor,ramp.at(floor),choice.heuristic(),choice.shuffled(),choice.slots(),choice.scored()==null?Map.of():choice.scored().components());
+            return choice.orderedSlots();
         } catch(RuntimeException e) {
             LOG.warn("NPC heuristic failed; using random four (seed={})",seed,e);
             return Selection.randomFour(new Random(seed));

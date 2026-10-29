@@ -26,7 +26,24 @@ Use pure fixtures for unique four/order, candidate count, seeded reproducibility
 
 A later strategy milestone should log observed public turns, verify setter/redirection coordination, and run matched seeded battle trials. No claim of improved win rate is justified by selector unit tests alone. Best-of-three remains a separate subsequent milestone.
 
-## Configuration in 0.6.0
+## Floor ramp in 0.6.1
+
+`config/cobbleverse-competitive-tower-ramp.json` is created automatically when the server/integrated world starts. [The complete default JSON](examples/cobbleverse-competitive-tower-ramp.json) can also be copied into that location. Restart Minecraft/the server after edits; pending previews keep their original choice.
+
+| Floors | Heuristic chance | Allowed score gap | Shuffle chosen four |
+| --- | --- | --- | --- |
+| 1–4 | 0% | unused | uniform random four/order |
+| 5 | 70% | 0.50 | 25% |
+| 6 | 80% | 0.35 | 20% |
+| 7 | 90% | 0.25 | 10% |
+| 8 | 95% | 0.15 | 5% |
+| 9 onward | 100% | 0 | 0% |
+
+Each band begins at `fromFloor` and lasts until the next band's start; the final band continues indefinitely. Starts must be strictly increasing and begin at 1. `heuristicChance` and `shuffleChance` are probabilities from 0 to 1. `scoreMargin` is an absolute gap below the best heuristic score (0–10), not a percentage or win probability. A heuristic choice is drawn uniformly from candidates within that gap. `shuffleChance` then shuffles the selected four, potentially changing the opening pair while retaining the chosen four members. The other branch uses uniform random four/order without invoking the scorer or hints.
+
+At floor 9+, zero margin means actual maximum score, with variation among exact ties. This is the strongest version of the current heuristic, not perfect play or knowledge of hidden builds. The Tower's floor-based move/switch AI remains unchanged. A malformed/oversized ramp warns and uses these defaults without overwriting the invalid file. There are at most 64 bands and a 32 KiB file limit. In the main config, `npcSelection: "RANDOM"` overrides the whole ramp.
+
+## Main configuration (0.6.0+)
 
 The server (or singleplayer profile) config `config/cobbleverse-competitive-tower.json` accepts:
 

@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "bands": [
+    {
+      "fromFloor": 1,
+      "heuristicChance": 0,
+      "scoreMargin": 0,
+      "shuffleChance": 0
+    },
+    {
+      "fromFloor": 5,
+      "heuristicChance": 0.7,
+      "scoreMargin": 0.5,
+      "shuffleChance": 0.25
+    },
+    {
+      "fromFloor": 6,
+      "heuristicChance": 0.8,
+      "scoreMargin": 0.35,
+      "shuffleChance": 0.2
+    },
+    {
+      "fromFloor": 7,
+      "heuristicChance": 0.9,
+      "scoreMargin": 0.25,
+      "shuffleChance": 0.1
+    },
+    {
+      "fromFloor": 8,
+      "heuristicChance": 0.95,
+      "scoreMargin": 0.15,
+      "shuffleChance": 0.05
+    },
+    {
+      "fromFloor": 9,
+      "heuristicChance": 1,
+      "scoreMargin": 0,
+      "shuffleChance": 0
+    }
+  ]
+}

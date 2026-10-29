@@ -80,7 +80,7 @@ public final class CompetitiveTower implements ModInitializer {
             settings = data.getBattleSettings().toNbt().toString(); forcedTeam = data.getForcedTeamName();
             var party = party(p); partyIds = ids(party); partyState = state(p, party); partyPreview = publicEntries(party);
             this.opponent = opponent;
-            npcSlots=dev.cobbleverse.tower.ai.NpcSelectionPolicy.select(opponent.team,partyPreview,opponent.trainerName,config.npcSelection,config.npcSelectionDiagnostics);
+            npcSlots=dev.cobbleverse.tower.ai.NpcSelectionPolicy.select(opponent.team,partyPreview,opponent.trainerName,config.npcSelection,config.npcSelectionDiagnostics,floor);
             open=TowerModes.open(owner);
             sheets=open?Arrays.stream(opponent.team).map(CompetitiveTower::sheet).toList():List.of();
             deadline = System.nanoTime() + config.selectionTimeoutSeconds * 1_000_000_000L;
