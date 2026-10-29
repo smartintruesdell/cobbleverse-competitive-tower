@@ -14,6 +14,8 @@ Acceptance: clean baseline commit; no prohibited binaries or private operational
 
 ## 2. Richer friendly reference cards
 
+Implemented in 0.4.0: compact friendly hover/focus summaries and a scrollable right-click/R reference panel. Uses synced own-party ability/moves/stats and available held-item translation descriptions. Statistics are labeled as persistent party values, not Tower-normalized predictions. Open Team Sheets remains deferred; preview networking is unchanged.
+
 Extend the existing friendly move/item popout with ability and description, held-item description, move type/category/power/accuracy/PP, and useful player-owned battle statistics. Clearly distinguish normalized battle values from persistent party values. Start with compact useful summaries; test hover/focus, viewport scaling, long names and keyboard access. Prefer existing synced player data where it is accurate; inspect installed APIs rather than infer unsupported fields.
 
 ### Stretch: optional Open Team Sheets

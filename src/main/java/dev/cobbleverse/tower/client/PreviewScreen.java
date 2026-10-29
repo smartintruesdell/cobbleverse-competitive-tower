@@ -23,6 +23,7 @@ public final class PreviewScreen extends Screen {
     private final OrderedSelection selection=new OrderedSelection();
     private long deadline;
     private boolean waiting, confirmingCancel;
+    private int referenceSlot=-1, referenceScroll;
     private String message="";
     private final List<ItemStack> opponentIcons=new ArrayList<>(), partyIcons=new ArrayList<>();
     private final List<ButtonWidget> partyButtons=new ArrayList<>();
@@ -77,15 +78,15 @@ public final class PreviewScreen extends Screen {
             partyButtons.add(b);
         }
         int bw=(panelWidth-14)/4;
-        confirm=button("Confirm",left+4,controlsY,bw,20,()->{
-            int[] s=selection.confirmed();waiting=true;message="Waiting for server...";updateButtons();
-            ClientPlayNetworking.send(new PreviewNetwork.Submit(token(),s[0],s[1],s[2],s[3]));
-        });
+        button("Forfeit",left+4,controlsY,bw,20,this::close);
         clear=button("Clear",left+6+bw,controlsY,bw,20,()->{selection.clear();message="";updateButtons();});
         button("Use chat",left+8+bw*2,controlsY,bw,20,()->{
             if(client!=null)client.setScreen(null);
         }).setTooltip(Tooltip.of(Text.literal("Hide this screen. The timer continues; use the selection command already in chat.")));
-        button("Forfeit",left+10+bw*3,controlsY,bw,20,this::close);
+        confirm=button("Confirm",left+10+bw*3,controlsY,bw,20,()->{
+            int[] s=selection.confirmed();waiting=true;message="Waiting for server...";updateButtons();
+            ClientPlayNetworking.send(new PreviewNetwork.Submit(token(),s[0],s[1],s[2],s[3]));
+        });
         updateButtons();
     }
     private ButtonWidget button(String text,int x,int y,int w,int h,Runnable action) {
@@ -106,6 +107,7 @@ public final class PreviewScreen extends Screen {
     @Override public boolean shouldPause() { return false; }
     @Override public void renderBackground(DrawContext context,int mouseX,int mouseY,float delta) {}
     @Override public void close() {
+        if(referenceSlot>=0) { referenceSlot=-1; return; }
         if(waiting)return;
         confirmingCancel=!confirmingCancel;init();
     }
@@ -133,6 +135,7 @@ public final class PreviewScreen extends Screen {
         }
         String footer=seconds==0?"Time elapsed — waiting for server.":message.isEmpty()?"1–2 lead · Click to select/remove · Scroll a selection to reorder.":message;
         c.drawTextWithShadow(textRenderer,fit(footer,panelWidth-12),left+6,controlsY+24,0xBAC8DA);
+        if(referenceSlot>=0) { drawReference(c); return; }
         int friendly=partyAt(mouseX,mouseY);
         int tooltipX=mouseX, tooltipY=mouseY;
         boolean overOpponent=mouseY>=opponentY && mouseY<opponentY+cardHeight
@@ -158,24 +161,86 @@ public final class PreviewScreen extends Screen {
     private static String label(PreviewNetwork.Entry e) {
         return e.name()+(namedForm(e)?" / "+e.form():"");
     }
-    private List<Text> friendlyTooltip(int slot) {
+    private List<Text> friendlyTooltip(int slot) { return referenceLines(slot,false); }
+    private List<Text> referenceLines(int slot,boolean detailed) {
         var entry=preview.party().get(slot);
         List<Text> lines=new ArrayList<>();
         lines.add(Text.literal(label(entry)).formatted(Formatting.AQUA));
         // Only consult the player's already-synced client party. Opponent entries never use this path.
         var pokemon=friendlyPokemon(slot);
         if(pokemon!=null) {
+            lines.add(Text.literal("Ability: ").formatted(Formatting.GRAY)
+                .append(Text.translatable(pokemon.getAbility().getDisplayName())));
+            if(detailed)lines.add(Text.translatable(pokemon.getAbility().getDescription()).formatted(Formatting.GRAY));
             var held=pokemon.heldItem();
             lines.add(held.isEmpty()?Text.literal("No held item").formatted(Formatting.GRAY)
                 :Text.literal("Held: ").formatted(Formatting.GRAY).append(held.getName()));
+            if(detailed && !held.isEmpty()) {
+                String key=held.getItem().getTranslationKey()+".tooltip";
+                if(net.minecraft.client.resource.language.I18n.hasTranslation(key))
+                    lines.add(Text.translatable(key).formatted(Formatting.GRAY));
+                else lines.add(Text.literal("No item description supplied.").formatted(Formatting.GRAY));
+            }
+            if(detailed) {
+                lines.add(Text.literal("Party stats · level "+pokemon.getLevel()).formatted(Formatting.YELLOW));
+                lines.add(Text.literal("HP "+pokemon.getMaxHealth()+"  Atk "+pokemon.getAttack()+"  Def "+pokemon.getDefence()));
+                lines.add(Text.literal("SpA "+pokemon.getSpecialAttack()+"  SpD "+pokemon.getSpecialDefence()+"  Spe "+pokemon.getSpeed()));
+                lines.add(Text.literal("Party values only; Tower normalization and battle effects may change them.").formatted(Formatting.GRAY));
+            }
             lines.add(Text.literal("Moves").formatted(Formatting.GRAY));
             var moves=pokemon.getMoveSet().getMoves();
             if(moves.isEmpty())lines.add(Text.literal("No moves learned.").formatted(Formatting.GRAY));
-            for(var move:moves)lines.add(Text.literal("• ").append(move.getDisplayName()));
+            for(var move:moves) {
+                lines.add(Text.literal("• ").append(move.getDisplayName()));
+                if(detailed) {
+                    lines.add(Text.empty().append(move.getType().getDisplayName()).append(" · ")
+                        .append(move.getDamageCategory().getDisplayName()).formatted(Formatting.GRAY));
+                    lines.add(Text.literal("Power "+number(move.getPower())+" · Accuracy "+number(move.getAccuracy())
+                        +" · PP "+move.getCurrentPp()+"/"+move.getMaxPp()).formatted(Formatting.GRAY));
+                    lines.add(move.getDescription().copy().formatted(Formatting.GRAY));
+                }
+            }
         } else lines.add(Text.literal("Waiting for party details…").formatted(Formatting.GRAY));
         int rank=selection.slots().indexOf(slot+1);
         if(rank>=0)lines.add(Text.literal("Selected #"+(rank+1)+(rank<2?" · opens battle":"")).formatted(Formatting.YELLOW));
+        if(!detailed)lines.add(Text.literal("Right-click or R for full reference").formatted(Formatting.YELLOW));
         return lines;
+    }
+    private static String number(double value) {
+        return value<=0?"—":value==Math.rint(value)?Long.toString((long)value):Double.toString(value);
+    }
+    private void drawReference(DrawContext c) {
+        // Item models render above ordinary screen text; keep the entire modal above them.
+        c.getMatrices().push();
+        c.getMatrices().translate(0,0,400);
+        try { drawReferenceContent(c); }
+        finally { c.getMatrices().pop(); }
+    }
+    private void drawReferenceContent(DrawContext c) {
+        int w=Math.max(80,Math.min(390,width-16)), x=(width-w)/2, y=12, bottom=height-12;
+        c.fill(0,0,width,height,0xB0000000);
+        c.fill(x,y,x+w,bottom,0xFF1C2838);
+        c.drawBorder(x,y,w,bottom-y,0xFF75E5D1);
+        c.drawTextWithShadow(textRenderer,"YOUR TEAM · REFERENCE",x+10,y+9,0x75E5D1);
+        String timer=Math.max(0,(deadline-System.nanoTime()+999_999_999L)/1_000_000_000L)+"s";
+        c.drawTextWithShadow(textRenderer,timer,x+w-10-textRenderer.getWidth(timer),y+9,0xFFBD69);
+        var wrapped=new ArrayList<net.minecraft.text.OrderedText>();
+        for(var line:referenceLines(referenceSlot,true))wrapped.addAll(textRenderer.wrapLines(line,w-24));
+        int contentTop=y+27,contentBottom=bottom-27;
+        int visible=Math.max(1,(contentBottom-contentTop)/12);
+        referenceScroll=Math.max(0,Math.min(referenceScroll,Math.max(0,wrapped.size()-visible)));
+        c.enableScissor(x+6,contentTop,x+w-6,contentBottom);
+        try {
+            for(int i=referenceScroll;i<Math.min(wrapped.size(),referenceScroll+visible);i++)
+                c.drawTextWithShadow(textRenderer,wrapped.get(i),x+12,contentTop+(i-referenceScroll)*12,0xFFFFFF);
+        } finally { c.disableScissor(); }
+        c.drawTextWithShadow(textRenderer,fit("Scroll / ↑ ↓ · Esc or click to return",w-20),x+10,bottom-17,0xBAC8DA);
+    }
+    @Override public boolean mouseClicked(double x,double y,int button) {
+        if(referenceSlot>=0) { referenceSlot=-1; return true; }
+        int slot=partyAt(x,y);
+        if(button==1 && slot>=0 && !confirmingCancel) { referenceSlot=slot; referenceScroll=0; return true; }
+        return super.mouseClicked(x,y,button);
     }
     private Pokemon friendlyPokemon(int slot) {
         var entry=preview.party().get(slot);
@@ -198,11 +263,25 @@ public final class PreviewScreen extends Screen {
         selection.move(rank,delta);updateButtons();return true;
     }
     @Override public boolean mouseScrolled(double x,double y,double horizontal,double vertical) {
+        if(referenceSlot>=0) { referenceScroll-= (int)Math.signum(vertical)*3; return true; }
         int slot=partyAt(x,y);
         if(slot>=0 && vertical!=0 && moveSelected(slot,vertical>0?-1:1))return true;
         return super.mouseScrolled(x,y,horizontal,vertical);
     }
     @Override public boolean keyPressed(int key,int scan,int modifiers) {
+        if(referenceSlot>=0) {
+            if(key==GLFW.GLFW_KEY_ESCAPE || key==GLFW.GLFW_KEY_R)referenceSlot=-1;
+            else if(key==GLFW.GLFW_KEY_DOWN)referenceScroll++;
+            else if(key==GLFW.GLFW_KEY_UP)referenceScroll--;
+            else if(key==GLFW.GLFW_KEY_PAGE_DOWN)referenceScroll+=8;
+            else if(key==GLFW.GLFW_KEY_PAGE_UP)referenceScroll-=8;
+            return true;
+        }
+        if(key==GLFW.GLFW_KEY_R && !confirmingCancel) {
+            for(int i=0;i<partyButtons.size();i++)if(partyButtons.get(i).isFocused()) {
+                referenceSlot=i;referenceScroll=0;return true;
+            }
+        }
         if(key==GLFW.GLFW_KEY_LEFT || key==GLFW.GLFW_KEY_RIGHT) {
             for(int i=0;i<partyButtons.size();i++) {
                 if(partyButtons.get(i).isFocused() && moveSelected(i,key==GLFW.GLFW_KEY_LEFT?-1:1))return true;

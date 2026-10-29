@@ -34,6 +34,7 @@ public final class RealUiServer implements ModInitializer {
                 var snapshot=new TeamSnapshot();snapshot.captureTeam(team,p.getUuid());
                 var settings=new BattleSettings();settings.setBattleMode(BattleSettings.BattleMode.DOUBLES);
                 TowerDataManager.getPlayerData(p.getUuid()).lockInTeam(snapshot,settings);
+                ((dev.cobbleverse.tower.RunModeData)TowerDataManager.getPlayerData(p.getUuid())).competitiveTower$setMode(true);
                 var pos=p.getBlockPos().add(2,0,0);p.getServerWorld().setBlockState(pos,Registries.BLOCK.get(Identifier.of("cobblemon_battle_tower:holo_battle_tower")).getDefaultState());
                 BattleTowerManager.startBattle(p,pos);
             }

@@ -1,5 +1,16 @@
 # Verification
 
+## Friendly references and action order — 0.4.0 (2026-10-29)
+
+- Inspected the installed Cobblemon 1.7.3 APIs for ability translation keys, move metadata, current/max PP, party stats and held-item tooltip translations. The client uses only its existing own-party data; opponent preview packet schemas are unchanged.
+- Added compact ability/item/move hover summaries and a right-click/R reference panel with descriptions, move metadata, explicitly labeled party stats, scrolling and keyboard paging. Missing item descriptions are reported rather than invented. No normalized-stat prediction or Open Team Sheets format is included.
+- Reordered actions to Forfeit / Clear / Use chat / Confirm, including keyboard traversal.
+- Inspected final screenshots at the normal scale and a smaller GUI viewport: [full reference](screenshots/friendly-reference-v040.png), [paged reference](screenshots/friendly-reference-scrolled-v040.png).
+- Offline build and all fifteen existing unit tests passed. The optional production-runtime harness exercises right-click, paging, Escape, selection reordering, GUI confirmation, ordered four-member teams on both sides, and preservation of all six persistent party identities/order.
+- The earlier legacy UI fixture needed an explicit per-run VGC flag after the 0.3 mode changes. Another harness attempt needed Screen casts for inherited Minecraft methods during remapping. Both failures were confined to the disposable test environment. Screenshot inspection also caught and corrected item models drawing over the reference panel.
+
+Manual follow-up: test the panel with your actual team, long translated names, and descriptions from other installed item mods. Items without a translated `.tooltip` description show an explicit fallback. Stats and PP describe the synced party, not a simulated normalized battle state.
+
 ## Tower format selector — 0.3.0
 
 Added a virtual Doubles VGC choice to the original Tower format cycle. A new bounded lock payload includes the competitive flag with the original Tower settings. The server validates it, runs the original lock handler, and commits an explicit per-run flag before the original Tower save. A nullable NBT field preserves older command-based saves and restores the selected mode on reopening. Ordinary Doubles explicitly overrides an old command preference.

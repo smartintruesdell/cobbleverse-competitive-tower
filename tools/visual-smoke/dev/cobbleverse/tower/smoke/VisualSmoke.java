@@ -35,7 +35,21 @@ public final class VisualSmoke implements ClientModInitializer {
                     phase=2;ticks=0;
                 } else if(phase==2) {
                     ++ticks;
-                    if(ticks==15)ScreenshotRecorder.saveScreenshot(c.runDirectory,"preview-large-items-v021.png",c.getFramebuffer(),t->{});
+                    if(ticks==10 && c.currentScreen instanceof PreviewScreen screen) {
+                        var card=((net.minecraft.client.gui.screen.Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w)
+                            .filter(b->b.getMessage().getString().startsWith("Selection 2:")).findFirst().orElseThrow();
+                        ((net.minecraft.client.gui.screen.Screen)screen).mouseClicked(card.getX()+4,card.getY()+4,1);
+                    }
+                    if(ticks==15)ScreenshotRecorder.saveScreenshot(c.runDirectory,"friendly-reference-v040.png",c.getFramebuffer(),t->{});
+                    if(ticks==17 && c.currentScreen instanceof PreviewScreen screen) {
+                        c.options.getGuiScale().setValue(4);c.onResolutionChanged();
+                        ((net.minecraft.client.gui.screen.Screen)screen).keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_PAGE_DOWN,0,0);
+                    }
+                    if(ticks==20)ScreenshotRecorder.saveScreenshot(c.runDirectory,"friendly-reference-scrolled-v040.png",c.getFramebuffer(),t->{});
+                    if(ticks==22 && c.currentScreen instanceof PreviewScreen screen) {
+                        ((net.minecraft.client.gui.screen.Screen)screen).keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE,0,0);
+                        System.out.println("FRIENDLY_REFERENCE_INPUT_PASS: right-click, paging and Escape exercised");
+                    }
                     if(ticks==25 && c.currentScreen instanceof PreviewScreen screen) {
                         ((net.minecraft.client.gui.screen.Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w).filter(b->b.getMessage().getString().equals("Confirm")).findFirst().ifPresent(ButtonWidget::onPress);
                         phase=3;ticks=0;
