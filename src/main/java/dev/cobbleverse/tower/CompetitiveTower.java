@@ -46,6 +46,8 @@ public final class CompetitiveTower implements ModInitializer {
     private static Pending launching;
 
     public static final class Config {
+        public String npcSelection = "HEURISTIC";
+        public boolean npcSelectionDiagnostics = false;
         public boolean enabled = false;
         public int selectionTimeoutSeconds = 120;
         public Set<UUID> optedInPlayers = new HashSet<>();
@@ -67,7 +69,7 @@ public final class CompetitiveTower implements ModInitializer {
         final boolean open;
         final List<SheetNetwork.Sheet> sheets;
         final BattleTowerTeams.TeamResult opponent;
-        final int[] npcSlots = Selection.randomFour(new Random());
+        final int[] npcSlots;
         int[] playerSlots;
         final List<net.minecraft.entity.Entity> spawned = new ArrayList<>();
         Pending(ServerPlayerEntity p, BlockPos pos, BattleTowerTeams.TeamResult opponent) {
@@ -78,6 +80,7 @@ public final class CompetitiveTower implements ModInitializer {
             settings = data.getBattleSettings().toNbt().toString(); forcedTeam = data.getForcedTeamName();
             var party = party(p); partyIds = ids(party); partyState = state(p, party); partyPreview = publicEntries(party);
             this.opponent = opponent;
+            npcSlots=dev.cobbleverse.tower.ai.NpcSelectionPolicy.select(opponent.team,partyPreview,opponent.trainerName,config.npcSelection,config.npcSelectionDiagnostics);
             open=TowerModes.open(owner);
             sheets=open?Arrays.stream(opponent.team).map(CompetitiveTower::sheet).toList():List.of();
             deadline = System.nanoTime() + config.selectionTimeoutSeconds * 1_000_000_000L;
@@ -101,6 +104,7 @@ public final class CompetitiveTower implements ModInitializer {
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> resetWorldState());
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             currentServer = server;
+            dev.cobbleverse.tower.ai.NpcSelectionPolicy.load(FabricLoader.getInstance().getConfigDir().resolve("cobbleverse-competitive-tower-teams.json"));
             journal = server.getSavePath(WorldSavePath.ROOT).resolve("competitive-tower-pending.json");
             try {
                 recovery.clear();

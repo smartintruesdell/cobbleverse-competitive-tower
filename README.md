@@ -4,7 +4,7 @@
 
 Read [architecture and feasibility](docs/ARCHITECTURE.md) first, then [verification and outstanding tests](docs/VERIFICATION.md).
 
-Adds **Doubles VGC** and **Doubles VGC Open** to the Holo Tower format selector for bring-six/pick-four solo doubles. Preview shows all six opponent species/forms. Choose four unique party slots in order; the first two lead. The NPC chooses four randomly without replacement before your selection. Its chosen four and leads remain server-side during preview. Ordinary **Doubles VGC** keeps all opponent build details private; **Doubles VGC Open** opts this run into the sheets described below.
+Adds **Doubles VGC** and **Doubles VGC Open** to the Holo Tower format selector for bring-six/pick-four solo doubles. Preview shows all six opponent species/forms. Choose four unique party slots in order; the first two lead. The NPC ranks four-member rosters and opening pairs before your selection, using its own moves and public species/form matchups. A random baseline/fallback remains available. Its chosen four and leads remain server-side during preview. Ordinary **Doubles VGC** keeps all opponent build details private; **Doubles VGC Open** opts this run into the sheets described below.
 
 The default interface is a visual selection screen, with private chat commands retained as a fallback. It supports **singleplayer (the integrated server) and dedicated servers**. For singleplayer, install it in your client profile. Multiplayer needs the addon on the server and each client that wants the screen; clients without the UI use the existing chat workflow. See [the Phase 2 implementation plan](docs/PHASE-2-PLAN.md).
 
@@ -14,9 +14,13 @@ Choose **Doubles VGC Open** in the existing Holo Tower Format cycle before start
 
 In an open preview, hover an opponent card to see its ability, held item, Tera type and move names in the same compact tooltip style as your own team. Tab can focus opponent cards for the same view. Held-item badges appear on their sprites. There is no separate opponent sheet dialog. Species/forms remain visible on all six cards; the chosen four and leads remain hidden.
 
-The open packet contains only six sets of those declared fields. No EVs, IVs, nature, stats, current/boosted PP, raw Pokémon data or NBT are sent. Tera is the configured Tera type; this format does not enable battle gimmicks or change the Tower's rules. Existing after-battle Battle Builds reports are separate. NPC selection remains random and gains no access to your submitted four/leads.
+The open packet contains only six sets of those declared fields. No EVs, IVs, nature, stats, current/boosted PP, raw Pokémon data or NBT are sent. Tera is the configured Tera type; this format does not enable battle gimmicks or change the Tower's rules. Existing after-battle Battle Builds reports are separate. NPC selection uses the same public species/form information in closed and open formats and gains no access to your submitted four/leads.
 
 Both client and server need **0.5.0+** for Open Team Sheets. An older server offers the existing choices only. Older clients can still use closed runs on a new server, but cannot lock/start an open run or silently downgrade a previously locked open run. Use an updated client, or explicitly forfeit that run. Closed preview packet schemas remain unchanged. Preview timeout, disconnect and cancellation still forfeit the run using the existing recovery path.
+
+## NPC selection
+
+Version 0.6.0 adds an experimental heuristic that scores all 90 four-member/opening-pair combinations. It favors coverage, passive partner synergy and safer leads, with controlled variation among close choices. Optional addon-owned team hints can favor lead pairs and reserves. [Configuration, metadata schema, inspected AI capabilities and limitations](docs/NPC-SELECTION.md) explain the supported behavior. This selects teams; it does not coach the existing move AI or establish an improved win rate.
 
 ## Pinned target
 
@@ -44,14 +48,14 @@ python3 tools/prepare_dependencies.py "/absolute/path/to/your/Cobbleverse/mods"
 The script requires the exact inspected SHA-256 hashes and copies dependencies into ignored `libs/`. It does not download Battle Tower. Gradle may download its public build dependencies. Result:
 
 ```text
-build/libs/cobbleverse-competitive-tower-0.5.0-experimental.jar
+build/libs/cobbleverse-competitive-tower-0.6.0-experimental.jar
 ```
 
 Do not distribute `libs/`, development runs, smoke-server directories, transformed classes, or decompilations. The runtime addon JAR contains only this addon's classes and metadata.
 
 ## Test in singleplayer
 
-1. Install `cobbleverse-competitive-tower-0.5.0-experimental.jar` in your Cobbleverse profile's `mods/` folder, removing any older version of this addon. Fully quit and relaunch Minecraft; returning to the title screen alone does not load new mods.
+1. Install `cobbleverse-competitive-tower-0.6.0-experimental.jar` in your Cobbleverse profile's `mods/` folder, removing any older version of this addon. Fully quit and relaunch Minecraft; returning to the title screen alone does not load new mods.
 2. In the profile's `config/cobbleverse-competitive-tower.json`, set `enabled` to `true` before launching. Keep `selectionTimeoutSeconds` and `optedInPlayers` as shown below. The delivered addon still defaults to disabled.
 3. Enter your fresh test world, prepare six healthy Pokémon and place a Holo Tower. No command is required with the new selector.
 4. Cycle **Format** to **Doubles VGC** (closed) or **Doubles VGC Open**, lock the six, and start. The selection screen opens automatically. Click four Pokémon in order: the first two lead. The numbers on your cards show the order. Click a selected Pokémon to remove it; scroll over one to move it earlier/later, or use Left/Right while its card is focused. Hover a friendly Pokémon for ability, held item and moves. Right-click a friendly card, or focus it with Tab and press **R**, for its full reference: descriptions, move type/category/power/accuracy/current PP, and party stats. Scroll or use Up/Down/Page Up/Page Down; Esc or click returns to selection. The timer continues while reading. Party stats are explicitly not normalized battle values. Opponent cards remain species/forms only. Press **Confirm** to start.

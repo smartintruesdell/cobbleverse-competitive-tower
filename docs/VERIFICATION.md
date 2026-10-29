@@ -1,5 +1,14 @@
 # Verification
 
+## NPC four and opener selection — 0.6.0 (2026-10-29)
+
+- Inspected the pinned Tower trainer factory and RCT evaluator/configuration. Solo Tower supplies RCTBattleAI; Wild Battle API wild logic is separate. Basic status/support evaluators exist, but no team-intent contract or proven setter/redirection coordination was found.
+- Added a pure 90-candidate heuristic with public-only opposing type/base-speed projections, own move coverage (including backup coverage), passive lead pairing, friendly-fire penalties, soft exact-roster hints and seeded near-best variation. Closed and open formats use the same input budget; player submission is absent from the selection API. RANDOM baseline and exception fallback remain available.
+- Thirty-one unit tests passed: legal enumeration/order, seed reproducibility, coverage, weather pairing/conflict, friendly-fire immunity, hint bounds/identity matching, unsupported strategy rejection, and existing packet privacy/mode tests. All 324 base type relationships were independently checked against the installed Showdown type chart.
+- First runtime attempt exposed standard forms being absent from the alternate-form list; random fallback preserved battle initiation. Corrected the adapter to include the standard form. The subsequent pinned-runtime test logged 90 heuristic candidates with no fallback, cached the chosen order before player submission, and asserted the same four UUIDs/opening pair in the actual NPC battle actor. Player GUI order, 4v4 rosters and all six persistent party identities/order also passed.
+
+This verifies integration, not improved battle strength or coordinated strategy execution. No full-game win-rate comparison, actual Trick Room/redirection trial or curated hints for all built-in teams has been completed. These remain follow-up work; see [architecture and metadata schema](NPC-SELECTION.md).
+
 ## Per-run Open Team Sheets — 0.5.0 (2026-10-29)
 
 - Added Doubles VGC Open to the existing format cycle without extending original Tower indices. Closed VGC remains the previous choice. The original lock transaction now persists a separate open flag; missing old-save keys default closed.

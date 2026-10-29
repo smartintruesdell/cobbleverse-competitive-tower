@@ -1,5 +1,5 @@
 plugins { id 'fabric-loom' version '1.16.3' }
-version = '0.5.0-experimental'
+version = '0.6.0-experimental'
 group = 'dev.cobbleverse'
 repositories { mavenCentral() }
 dependencies {

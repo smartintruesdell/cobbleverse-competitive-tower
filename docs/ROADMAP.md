@@ -30,6 +30,8 @@ Acceptance: accurate friendly references; readable layout; no default opponent-b
 
 ## 3. Intelligent NPC four and opener selection
 
+Initial heuristic and optional roster-matched hints implemented in 0.6.0; see [NPC selection architecture](NPC-SELECTION.md). Coordinated move policies and measured battle-strength comparisons remain future work. The selector keeps the same public-only player information budget in both sheet formats.
+
 Inspect the installed Tower/RCT/Wild Battle AI before designing scoring rules. Treat pre-battle selection as an independent module that passes an ordered four to the existing move/switch AI.
 
 Baseline design:

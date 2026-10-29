@@ -14,7 +14,7 @@ import java.util.*;
 
 /** Runs only when explicitly enabled in the disposable test instance. */
 public final class RealUiServer implements ModInitializer {
-    UUID playerId; int ticks; List<UUID> partyIds;
+    UUID playerId; int ticks; List<UUID> partyIds,expectedNpc;
     public void onInitialize() {
         if(Boolean.getBoolean("ctower.modeTest")){new ModeServerSmoke().register();return;}
         if(!Boolean.getBoolean("ctower.realUiTest"))return;
@@ -55,6 +55,17 @@ public final class RealUiServer implements ModInitializer {
                 ((dev.cobbleverse.tower.RunModeData)TowerDataManager.getPlayerData(p.getUuid())).competitiveTower$setOpen(false);
                 var pos=p.getBlockPos().add(2,0,0);p.getServerWorld().setBlockState(pos,Registries.BLOCK.get(Identifier.of("cobblemon_battle_tower:holo_battle_tower")).getDefaultState());
                 BattleTowerManager.startBattle(p,pos);
+                try {
+                    var pendingField=dev.cobbleverse.tower.CompetitiveTower.class.getDeclaredField("pending");pendingField.setAccessible(true);
+                    var pending=((Map<?,?>)pendingField.get(null)).get(p.getUuid());
+                    var slotsField=pending.getClass().getDeclaredField("npcSlots");slotsField.setAccessible(true);
+                    var opponentField=pending.getClass().getDeclaredField("opponent");opponentField.setAccessible(true);
+                    var generated=(BattleTowerTeams.TeamResult)opponentField.get(pending);
+                    int[] slots=(int[])slotsField.get(pending);
+                    expectedNpc=dev.cobbleverse.tower.Selection.pick(Arrays.asList(generated.team),slots).stream().map(x->x.getUuid()).toList();
+                    if(expectedNpc.size()!=4 || new HashSet<>(expectedNpc).size()!=4)throw new AssertionError("Invalid preselected NPC four");
+                    System.out.println("NPC_PREVIEW_SELECTION_PASS: cached ordered NPC selection before player submission "+Arrays.toString(slots));
+                }catch(ReflectiveOperationException e){throw new RuntimeException(e);}
             }
             if(ticks>60 && BattleTowerManager.hasActiveSession(p.getUuid())) {
                 var battle=BattleRegistry.getBattleByParticipatingPlayer(p);
@@ -64,6 +75,10 @@ public final class RealUiServer implements ModInitializer {
                     if(actor.getUuid().equals(p.getUuid())) {
                         var actual=actor.getPokemonList().stream().map(x->x.getOriginalPokemon().getUuid()).toList();
                         if(!actual.equals(List.of(partyIds.get(4),partyIds.get(1),partyIds.get(5),partyIds.get(0))))throw new AssertionError("Wrong selected order");
+                    } else {
+                        var actual=actor.getPokemonList().stream().map(x->x.getOriginalPokemon().getUuid()).toList();
+                        if(!actual.equals(expectedNpc))throw new AssertionError("NPC selected order changed before battle");
+                        System.out.println("NPC_BATTLE_ORDER_PASS: selected four and opening pair preserved by RCT");
                     }
                 }
                 System.out.println("PHASE2_REAL_UI_PASS: server preview -> GUI confirm -> ordered 4v4 battle");
