@@ -46,6 +46,7 @@ public final class CompetitiveTower implements ModInitializer {
     private static Pending launching;
 
     public static final class Config {
+        public boolean verboseChatMessages = false;
         public String npcSelection = "HEURISTIC";
         public boolean npcSelectionDiagnostics = false;
         public boolean enabled = false;
@@ -140,6 +141,11 @@ public final class CompetitiveTower implements ModInitializer {
                     var player = c.getSource().getPlayerOrThrow();
                     if (pending.containsKey(player.getUuid())) cancel(player, "Preview canceled; run forfeited.");
                     else tell(player, "No competitive preview is pending.");
+                    return 1;
+                }))
+                .then(literal("chat").executes(c -> {
+                    var player=c.getSource().getPlayerOrThrow();var p=pending.get(player.getUuid());
+                    if(p!=null)chatUi(player,p.token);else tell(player,"No competitive preview is pending.");
                     return 1;
                 }))
                 .then(literal("preview").executes(c -> {
@@ -243,7 +249,7 @@ public final class CompetitiveTower implements ModInitializer {
             pending.remove(p.owner); recovery.remove(p.owner); saveJournal();
             PreviewNetwork.status(player,p.token,true,"Battle starting.");
             succeeded = true;
-            tell(player, "Competitive doubles started: four per side; your first two selections lead.");
+            if(config.verboseChatMessages || !PreviewNetwork.quietUiAvailable(player))tell(player, "Competitive doubles started: four per side; your first two selections lead.");
             return 1;
         } catch (Exception e) {
             LOG.error("Competitive Tower start failed", e);
@@ -324,15 +330,25 @@ public final class CompetitiveTower implements ModInitializer {
     }
     private static void show(ServerPlayerEntity player, Pending p) {
         if(p.open && !SheetNetwork.available(player)) {cancel(player,"Open Team Sheets client support lost; run forfeited.");return;}
-        tell(player,(p.open?"OPEN TEAM SHEETS · Opponent’s six: ":"CLOSED SHEETS · Opponent’s six (species / form only): ") + labels(Arrays.asList(p.opponent.team)));
-        tell(player,"Your slots: " + labels(party(player)));
-        tell(player,"Pick four in order; first two lead. NPC choice is hidden. Cancel, timeout or disconnect forfeits this run.");
+        if(config.verboseChatMessages || !PreviewNetwork.quietUiAvailable(player))showChat(player,p);
         if (PreviewNetwork.available(player)) {
             int remaining = (int)Math.clamp((p.deadline-System.nanoTime())/1_000_000L,0,600_000);
             var preview=new PreviewNetwork.Preview(p.token,p.floor,remaining,publicEntries(Arrays.asList(p.opponent.team)),p.partyPreview);
             if(p.open)net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,new SheetNetwork.Preview(preview,p.sheets));
             else net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking.send(player,preview);
         }
+    }
+    public static void chatUi(ServerPlayerEntity player,String token) {
+        var p=pending.get(player.getUuid());
+        if(p==null || !p.token.equals(token) || System.nanoTime()>=p.deadline) {
+            tell(player,"No matching active preview. Use /ctower preview.");return;
+        }
+        showChat(player,p);
+    }
+    private static void showChat(ServerPlayerEntity player,Pending p) {
+        tell(player,(p.open?"OPEN TEAM SHEETS · Opponent’s six: ":"CLOSED SHEETS · Opponent’s six (species / form only): ") + labels(Arrays.asList(p.opponent.team)));
+        tell(player,"Your slots: " + labels(party(player)));
+        tell(player,"Pick four in order; first two lead. NPC choice is hidden. Cancel, timeout or disconnect forfeits this run.");
         String command = "/ctower pick " + p.token + " 1 2 3 4";
         player.sendMessage(Text.literal("[Click to edit your four slots] " + command)
             .styled(s -> s.withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, command))), false);

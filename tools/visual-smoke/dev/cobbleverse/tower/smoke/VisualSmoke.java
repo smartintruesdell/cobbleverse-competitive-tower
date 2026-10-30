@@ -35,6 +35,16 @@ public final class VisualSmoke implements ClientModInitializer {
                     phase=2;ticks=0;
                 } else if(phase==2) {
                     ++ticks;
+                    if(Boolean.getBoolean("ctower.quietChatTest")) {
+                        if(ticks==1)System.out.println("QUIET_PREVIEW_READY");
+                        if(ticks==10 && c.currentScreen instanceof PreviewScreen screen) {
+                            System.out.println("QUIET_CHAT_REQUESTED");
+                            ((net.minecraft.client.gui.screen.Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w)
+                                .filter(b->b.getMessage().getString().equals("Use chat")).findFirst().orElseThrow().onPress();
+                        }
+                        if(ticks==15)c.getNetworkHandler().sendChatCommand("ctower preview");
+                        if(ticks==20){System.out.println("VERBOSE_PREVIEW_REQUESTED");c.getNetworkHandler().sendChatCommand("ctower-test-verbose-preview");}
+                    } else {
                     if(ticks==10 && c.currentScreen instanceof PreviewScreen screen) {
                         var card=((net.minecraft.client.gui.screen.Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w)
                             .filter(b->b.getMessage().getString().startsWith("Selection 2:")).findFirst().orElseThrow();
@@ -50,7 +60,11 @@ public final class VisualSmoke implements ClientModInitializer {
                         ((net.minecraft.client.gui.screen.Screen)screen).keyPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE,0,0);
                         System.out.println("FRIENDLY_REFERENCE_INPUT_PASS: right-click, paging and Escape exercised");
                     }
+                    }
                     if(ticks==25 && c.currentScreen instanceof PreviewScreen screen) {
+                        if(Boolean.getBoolean("ctower.quietChatTest"))for(int slot:new int[]{5,2,6,1})
+                            ((net.minecraft.client.gui.screen.Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w)
+                                .filter(b->b.getMessage().getString().startsWith("Slot "+slot+":")).findFirst().ifPresent(ButtonWidget::onPress);
                         ((net.minecraft.client.gui.screen.Screen)screen).children().stream().filter(w->w instanceof ButtonWidget).map(w->(ButtonWidget)w).filter(b->b.getMessage().getString().equals("Confirm")).findFirst().ifPresent(ButtonWidget::onPress);
                         phase=3;ticks=0;
                     }

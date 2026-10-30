@@ -66,9 +66,32 @@ public final class PreviewNetwork {
             public void encode(RegistryByteBuf b,Status p) { b.writeString(p.token,64); b.writeBoolean(p.finished); b.writeString(p.message,256); }
         };
     }
+    /** Capability marker and versioned status channel for clients with on-demand chat fallback. */
+    public record QuietStatus(Status status) implements CustomPayload {
+        public static final Id<QuietStatus> ID=id("quiet_status");
+        public Id<QuietStatus> getId(){return ID;}
+        public static final PacketCodec<RegistryByteBuf,QuietStatus> CODEC=new PacketCodec<>() {
+            public QuietStatus decode(RegistryByteBuf b){return new QuietStatus(Status.CODEC.decode(b));}
+            public void encode(RegistryByteBuf b,QuietStatus p){Status.CODEC.encode(b,p.status);}
+        };
+    }
+    public record ChatRequest(String token) implements CustomPayload {
+        public static final Id<ChatRequest> ID=id("chat_request");
+        public Id<ChatRequest> getId(){return ID;}
+        public static final PacketCodec<RegistryByteBuf,ChatRequest> CODEC=new PacketCodec<>() {
+            public ChatRequest decode(RegistryByteBuf b){return new ChatRequest(b.readString(64));}
+            public void encode(RegistryByteBuf b,ChatRequest p){b.writeString(p.token,64);}
+        };
+    }
+    public static boolean quietUiAvailable(ServerPlayerEntity player) {
+        return available(player) && ServerPlayNetworking.canSend(player,QuietStatus.ID);
+    }
     public static void register() {
         PayloadTypeRegistry.playS2C().register(Preview.ID,Preview.CODEC);
         PayloadTypeRegistry.playS2C().register(Status.ID,Status.CODEC);
+        PayloadTypeRegistry.playS2C().register(QuietStatus.ID,QuietStatus.CODEC);
+        PayloadTypeRegistry.playC2S().register(ChatRequest.ID,ChatRequest.CODEC);
+        ServerPlayNetworking.registerGlobalReceiver(ChatRequest.ID,(p,c)->c.server().execute(()->CompetitiveTower.chatUi(c.player(),p.token())));
         PayloadTypeRegistry.playC2S().register(Submit.ID,Submit.CODEC);
         PayloadTypeRegistry.playC2S().register(Cancel.ID,Cancel.CODEC);
         ServerPlayNetworking.registerGlobalReceiver(Submit.ID,(p,c) -> c.server().execute(() -> CompetitiveTower.submitUi(c.player(),p)));
@@ -78,6 +101,10 @@ public final class PreviewNetwork {
         return ServerPlayNetworking.canSend(player,Preview.ID) && ServerPlayNetworking.canSend(player,Status.ID);
     }
     public static void status(ServerPlayerEntity player,String token,boolean finished,String message) {
-        if (player!=null && available(player)) ServerPlayNetworking.send(player,new Status(token,finished,message));
+        if (player!=null && available(player)) {
+            var status=new Status(token,finished,message);
+            if(quietUiAvailable(player))ServerPlayNetworking.send(player,new QuietStatus(status));
+            else ServerPlayNetworking.send(player,status);
+        }
     }
 }

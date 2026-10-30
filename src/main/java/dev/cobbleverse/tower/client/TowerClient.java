@@ -18,6 +18,9 @@ public final class TowerClient implements ClientModInitializer {
             if(c.client().currentScreen instanceof PreviewScreen screen && screen.token().equals(p.preview().token()))screen.refresh(p.preview());
             else c.client().setScreen(new PreviewScreen(p.preview(),p.opponent()));
         }));
+        ClientPlayNetworking.registerGlobalReceiver(PreviewNetwork.QuietStatus.ID,(p,c)->c.client().execute(()->{
+            if(c.client().currentScreen instanceof PreviewScreen screen && screen.token().equals(p.status().token()))screen.status(p.status());
+        }));
         ClientPlayNetworking.registerGlobalReceiver(PreviewNetwork.Status.ID,(p,c) -> c.client().execute(() -> {
             if(c.client().currentScreen instanceof PreviewScreen screen && screen.token().equals(p.token())) screen.status(p);
         }));

@@ -6,7 +6,7 @@ Read [architecture and feasibility](docs/ARCHITECTURE.md) first, then [verificat
 
 Adds **Doubles VGC** and **Doubles VGC Open** to the Holo Tower format selector for bring-six/pick-four solo doubles. Preview shows all six opponent species/forms. Choose four unique party slots in order; the first two lead. The NPC ranks four-member rosters and opening pairs before your selection, using its own moves and public species/form matchups. A random baseline/fallback remains available. Its chosen four and leads remain server-side during preview. Ordinary **Doubles VGC** keeps all opponent build details private; **Doubles VGC Open** opts this run into the sheets described below.
 
-The default interface is a visual selection screen, with private chat commands retained as a fallback. It supports **singleplayer (the integrated server) and dedicated servers**. For singleplayer, install it in your client profile. Multiplayer needs the addon on the server and each client that wants the screen; clients without the UI use the existing chat workflow. See [the Phase 2 implementation plan](docs/PHASE-2-PLAN.md).
+The default interface is a visual selection screen, with private chat commands retained as a fallback. In 0.6.2, routine addon chat is quiet by default; **Use chat** requests the team lists and selection command when needed. It supports **singleplayer (the integrated server) and dedicated servers**. For singleplayer, install it in your client profile. Multiplayer needs the addon on the server and each client that wants the screen; clients without the UI use the existing chat workflow. See [the Phase 2 implementation plan](docs/PHASE-2-PLAN.md).
 
 ## Open Team Sheets (per run)
 
@@ -17,6 +17,12 @@ In an open preview, hover an opponent card to see its ability, held item, Tera t
 The open packet contains only six sets of those declared fields. No EVs, IVs, nature, stats, current/boosted PP, raw Pokémon data or NBT are sent. Tera is the configured Tera type; this format does not enable battle gimmicks or change the Tower's rules. Existing after-battle Battle Builds reports are separate. NPC selection uses the same public species/form information in closed and open formats and gains no access to your submitted four/leads.
 
 Both client and server need **0.5.0+** for Open Team Sheets. An older server offers the existing choices only. Older clients can still use closed runs on a new server, but cannot lock/start an open run or silently downgrade a previously locked open run. Use an updated client, or explicitly forfeit that run. Closed preview packet schemas remain unchanged. Preview timeout, disconnect and cancellation still forfeit the run using the existing recovery path.
+
+## Chat verbosity
+
+In the server or singleplayer profile's `config/cobbleverse-competitive-tower.json`, `"verboseChatMessages": false` suppresses automatic addon team lists, pick-four instructions, command suggestions and the routine battle-start confirmation for updated UI clients. Set it to `true` to restore those messages. Restart the game/server after changing configuration.
+
+**Use chat** or `/ctower chat` explicitly prints the pending selection details and clickable command without extending the deadline. `/ctower preview` reopens the screen. Errors, cancellation/timeout notices and mode-command confirmations remain visible. Older clients and clients without the GUI retain automatic chat output so their existing fallback remains usable; upgrade both client and server to 0.6.2 for quiet UI behavior. This setting does not mute original Battle Tower messages, other mods' reports or server diagnostics.
 
 ## NPC selection
 
@@ -48,18 +54,18 @@ python3 tools/prepare_dependencies.py "/absolute/path/to/your/Cobbleverse/mods"
 The script requires the exact inspected SHA-256 hashes and copies dependencies into ignored `libs/`. It does not download Battle Tower. Gradle may download its public build dependencies. Result:
 
 ```text
-build/libs/cobbleverse-competitive-tower-0.6.1-experimental.jar
+build/libs/cobbleverse-competitive-tower-0.6.2-experimental.jar
 ```
 
 Do not distribute `libs/`, development runs, smoke-server directories, transformed classes, or decompilations. The runtime addon JAR contains only this addon's classes and metadata.
 
 ## Test in singleplayer
 
-1. Install `cobbleverse-competitive-tower-0.6.1-experimental.jar` in your Cobbleverse profile's `mods/` folder, removing any older version of this addon. Fully quit and relaunch Minecraft; returning to the title screen alone does not load new mods.
+1. Install `cobbleverse-competitive-tower-0.6.2-experimental.jar` in your Cobbleverse profile's `mods/` folder, removing any older version of this addon. Fully quit and relaunch Minecraft; returning to the title screen alone does not load new mods.
 2. In the profile's `config/cobbleverse-competitive-tower.json`, set `enabled` to `true` before launching. Keep `selectionTimeoutSeconds` and `optedInPlayers` as shown below. The delivered addon still defaults to disabled.
 3. Enter your fresh test world, prepare six healthy Pokémon and place a Holo Tower. No command is required with the new selector.
 4. Cycle **Format** to **Doubles VGC** (closed) or **Doubles VGC Open**, lock the six, and start. The selection screen opens automatically. Click four Pokémon in order: the first two lead. The numbers on your cards show the order. Click a selected Pokémon to remove it; scroll over one to move it earlier/later, or use Left/Right while its card is focused. Hover a friendly Pokémon for ability, held item and moves. Right-click a friendly card, or focus it with Tab and press **R**, for its full reference: descriptions, move type/category/power/accuracy/current PP, and party stats. Scroll or use Up/Down/Page Up/Page Down; Esc or click returns to selection. The timer continues while reading. Party stats are explicitly not normalized battle values. Opponent cards remain species/forms only. Press **Confirm** to start.
-5. **Esc / Forfeit** asks before forfeiting. **Use chat** only hides the screen: the timer continues, and the original suggested command remains in chat. `/ctower preview` reopens the screen without extending the deadline. `/ctower cancel`, the selection timeout, or leaving during preview forfeits that run. The journal is stored in this world's save; in-memory preview/recovery state is cleared between worlds. Your `/ctower on` preference is profile-wide and persists across worlds.
+5. **Esc / Forfeit** asks before forfeiting. **Use chat** hides the screen and requests the selection details and suggested command in chat; the timer continues. `/ctower preview` reopens the screen without extending the deadline. `/ctower cancel`, the selection timeout, or leaving during preview forfeits that run. The journal is stored in this world's save; in-memory preview/recovery state is cleared between worlds. Your `/ctower on` preference is profile-wide and persists across worlds.
 
 A remote server still needs the addon installed and enabled itself; installing it only on your client does not change remote Tower battles.
 

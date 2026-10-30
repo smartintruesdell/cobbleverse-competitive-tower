@@ -1,5 +1,12 @@
 # Verification
 
+## Quiet chat toggle — 0.6.2 (2026-10-30)
+
+- Added server/singleplayer `verboseChatMessages`, default false. Updated UI clients suppress routine addon lists/instructions/command suggestions/start notices. Errors, cancellation notices and mode-command confirmations remain visible. Legacy/non-UI clients retain automatic chat for compatibility. Other mods and original Tower chat are unchanged.
+- Use chat now requests details explicitly through an owner/token-checked bounded payload; `/ctower chat` also prints details. A versioned status channel preserves legacy status handling and identifies clients with the new on-demand fallback. Requests do not reset the preview deadline.
+- All 41 unit tests passed, including quiet defaults, explicit verbose config, new payload round trips and token bounds.
+- Disposable runtime: verified no automatic lists before Use chat, one requested fallback, no duplicate lists when reopening quietly, automatic lists when verbose was enabled, and no routine start notice after restoring quiet. GUI confirmation closed correctly through the versioned status channel; ordered player/NPC four and persistent six-party cleanup passed. An initial test fixture incorrectly pressed disabled Confirm after leaving/reopening had cleared its draft; reselecting four in the fixture resolved that test-only failure.
+
 ## Configurable selection ramp — 0.6.1 (2026-10-29)
 
 - Added a versioned, addon-owned floor-ramp JSON file. Defaults use uniform random four/order on floors 1–4; progressively stronger probabilistic scoring and less shuffle on 5–8; maximum score with exact-tie variation on 9 and beyond. Main RANDOM policy remains an override. No player-build information or move-AI changes were introduced.

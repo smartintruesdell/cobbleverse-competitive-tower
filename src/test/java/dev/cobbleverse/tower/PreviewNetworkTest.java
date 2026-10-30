@@ -22,6 +22,20 @@ class PreviewNetworkTest {
             var c=new PreviewNetwork.Cancel("token");PreviewNetwork.Cancel.CODEC.encode(b,c);assertEquals(c,PreviewNetwork.Cancel.CODEC.decode(b));
         }finally{b.release();}
     }
+    @Test void quietStatusAndOnDemandChatRequestRoundTrip() {
+        var b=buffer();try {
+            var status=new PreviewNetwork.QuietStatus(new PreviewNetwork.Status("token",true,"Battle starting."));
+            PreviewNetwork.QuietStatus.CODEC.encode(b,status);assertEquals(status,PreviewNetwork.QuietStatus.CODEC.decode(b));
+            var chat=new PreviewNetwork.ChatRequest("token");PreviewNetwork.ChatRequest.CODEC.encode(b,chat);
+            assertEquals(chat,PreviewNetwork.ChatRequest.CODEC.decode(b));assertEquals(0,b.readableBytes());
+        }finally{b.release();}
+    }
+    @Test void quietChatDefaultsAndExplicitVerboseConfig() {
+        var gson=new com.google.gson.Gson();
+        assertFalse(gson.fromJson("{}",CompetitiveTower.Config.class).verboseChatMessages);
+        assertTrue(gson.fromJson("{\"verboseChatMessages\":true}",CompetitiveTower.Config.class).verboseChatMessages);
+        var b=buffer();try{b.writeString("x".repeat(65));assertThrows(io.netty.handler.codec.DecoderException.class,()->PreviewNetwork.ChatRequest.CODEC.decode(b));}finally{b.release();}
+    }
     @Test void oversizedInboundTokenRejected() {
         var b=buffer();try{
             b.writeString("x".repeat(65));

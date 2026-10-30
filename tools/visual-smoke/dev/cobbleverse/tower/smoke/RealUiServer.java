@@ -18,6 +18,17 @@ public final class RealUiServer implements ModInitializer {
     public void onInitialize() {
         if(Boolean.getBoolean("ctower.modeTest")){new ModeServerSmoke().register();return;}
         if(!Boolean.getBoolean("ctower.realUiTest"))return;
+        if(Boolean.getBoolean("ctower.quietChatTest"))net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register((dispatcher,registry,environment)->
+            dispatcher.register(net.minecraft.server.command.CommandManager.literal("ctower-test-verbose-preview").executes(context->{
+                try {
+                    var field=dev.cobbleverse.tower.CompetitiveTower.class.getDeclaredField("config");field.setAccessible(true);
+                    var config=(dev.cobbleverse.tower.CompetitiveTower.Config)field.get(null);boolean previous=config.verboseChatMessages;
+                    config.verboseChatMessages=true;
+                    try {var player=context.getSource().getPlayerOrThrow();BattleTowerManager.startBattle(player,player.getBlockPos());}
+                    finally {config.verboseChatMessages=previous;}
+                    System.out.println("VERBOSE_PREVIEW_TOGGLE_PASS");return 1;
+                }catch(ReflectiveOperationException e){throw new RuntimeException(e);}
+            })));
         ServerPlayConnectionEvents.JOIN.register((h,s,server)->{if(h.player.getName().getString().equals("TowerUITest")){playerId=h.player.getUuid();ticks=0;}});
         ServerTickEvents.END_SERVER_TICK.register(server->{
             if(playerId==null)return;var p=server.getPlayerManager().getPlayer(playerId);if(p==null)return;

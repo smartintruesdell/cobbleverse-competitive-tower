@@ -94,8 +94,9 @@ public final class PreviewScreen extends Screen {
         button("Forfeit",left+4,controlsY,bw,20,this::close);
         clear=button("Clear",left+6+bw,controlsY,bw,20,()->{selection.clear();message="";updateButtons();});
         button("Use chat",left+8+bw*2,controlsY,bw,20,()->{
+            if(ClientPlayNetworking.canSend(PreviewNetwork.ChatRequest.ID))ClientPlayNetworking.send(new PreviewNetwork.ChatRequest(token()));
             if(client!=null)client.setScreen(null);
-        }).setTooltip(Tooltip.of(Text.literal("Hide this screen. The timer continues; use the selection command already in chat.")));
+        }).setTooltip(Tooltip.of(Text.literal("Show selection details and the command in chat. The timer continues.")));
         confirm=button("Confirm",left+10+bw*3,controlsY,bw,20,()->{
             int[] s=selection.confirmed();waiting=true;message="Waiting for server...";updateButtons();
             ClientPlayNetworking.send(new PreviewNetwork.Submit(token(),s[0],s[1],s[2],s[3]));
